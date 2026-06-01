@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wingspan · Automa</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f2ed;
+    --surface: #ffffff;
+    --surface2: #ede8e0;
+    --border: rgba(0,0,0,0.08);
+    --border-hover: rgba(0,0,0,0.2);
+    --text: #1a1510;
+    --text-mid: #6b5f50;
+    --text-dim: #b0a090;
+    --accent: #5a94aa;
+    --accent2: #3a7a92;
+    --accent3: #5a94aa;
+    --danger: #b83030;
+    --green: #2a8a4a;
+  }
+  :root.dark {
+    --bg: #0c0c0f;
+    --surface: #131318;
+    --surface2: #1a1a22;
+    --border: rgba(255,255,255,0.07);
+    --border-hover: rgba(255,255,255,0.18);
+    --text: #e8e8f0;
+    --text-mid: #8888a0;
+    --text-dim: #44445a;
+    --accent: #9ac8dc;
+    --accent2: #7ab8d0;
+    --accent3: #9ac8dc;
+    --danger: #e07070;
+    --green: #70c880;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh; overflow-x: hidden;
+    transition: background 0.3s, color 0.3s;
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 0; opacity: 0.5;
+  }
+  :root.dark body::before { opacity: 0.6; }
+
+  .container { position: relative; z-index: 1; max-width: 640px; margin: 0 auto; padding: 0 20px 60px; }
+
+  /* Fixed controls */
+  .fixed-controls { position: fixed; top: 16px; right: 16px; z-index: 100; display: flex; gap: 8px; }
+  .ctrl-btn {
+    width: 38px; height: 38px; border-radius: 50%;
+    border: 1px solid var(--border); background: var(--surface);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 0.85rem; color: var(--text-mid);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: border-color 0.2s, transform 0.2s, background 0.3s;
+    font-family: 'DM Mono', monospace; font-weight: 500;
+  }
+  .ctrl-btn:hover { border-color: var(--border-hover); transform: scale(1.08); }
+  .icon-sun { display: none; }
+  .icon-moon { display: block; }
+  :root.dark .icon-sun { display: block; }
+  :root.dark .icon-moon { display: none; }
+
+  /* Header */
+  header {
+    padding: 64px 0 32px; border-bottom: 1px solid var(--border); margin-bottom: 32px;
+    position: relative; overflow: hidden;
+  }
+  .header-img {
+    position: absolute; top: 0; right: -20px; height: 100%; width: 260px;
+    background-size: cover; background-position: center;
+    opacity: 0.12; pointer-events: none; border-radius: 0 0 0 40px;
+    mask-image: linear-gradient(to left, rgba(0,0,0,0.7), transparent);
+    -webkit-mask-image: linear-gradient(to left, rgba(0,0,0,0.7), transparent);
+  }
+  :root.dark .header-img { opacity: 0.08; }
+  .back-link { font-family: 'DM Mono', monospace; font-size: 0.7rem; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; margin-bottom: 20px; transition: color 0.2s; }
+  .back-link:hover { color: var(--accent); }
+  .header-label { font-family: 'DM Mono', monospace; font-size: 0.7rem; letter-spacing: 3px; color: var(--accent); text-transform: uppercase; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .header-label::before { content: ''; width: 16px; height: 1px; background: var(--accent); }
+  h1 { font-size: clamp(1.8rem, 5vw, 2.8rem); font-weight: 800; letter-spacing: -1.5px; line-height: 1; }
+  h1 .dim { color: transparent; -webkit-text-stroke: 1px var(--text-dim); }
+  :root.dark h1 .dim { -webkit-text-stroke: 1px var(--text-dim); }
+  .header-sub { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--text-mid); margin-top: 10px; line-height: 1.6; }
+
+  /* Screens */
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* Setup screen */
+  .setup-section { margin-bottom: 24px; }
+  .section-label { font-family: 'DM Mono', monospace; font-size: 0.65rem; letter-spacing: 3px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .option-grid { display: flex; gap: 8px; flex-wrap: wrap; }
+  .opt-btn {
+    flex: 1; min-width: 80px; padding: 12px 8px;
+    border: 1.5px solid var(--border); border-radius: 10px;
+    background: var(--surface); color: var(--text-mid);
+    font-family: 'Syne', sans-serif; font-size: 0.82rem; font-weight: 600;
+    cursor: pointer; text-align: center; transition: all 0.2s;
+  }
+  .opt-btn:hover { border-color: var(--border-hover); color: var(--text); }
+  .opt-btn.active { border-color: var(--accent); background: var(--accent); color: white; }
+  .opt-btn .opt-sub { font-family: 'DM Mono', monospace; font-size: 0.6rem; font-weight: 400; opacity: 0.8; display: block; margin-top: 2px; }
+
+  .start-btn {
+    width: 100%; padding: 16px; margin-top: 8px;
+    background: var(--accent); border: none; border-radius: 12px;
+    color: white; font-family: 'Syne', sans-serif; font-size: 0.9rem; font-weight: 700;
+    letter-spacing: 1px; text-transform: uppercase; cursor: pointer;
+    transition: all 0.2s; box-shadow: 0 3px 12px rgba(0,0,0,0.15);
+  }
+  .start-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+
+  /* Game screen */
+  .round-indicator {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  .round-pips { display: flex; gap: 6px; }
+  .round-pip {
+    width: 28px; height: 6px; border-radius: 3px;
+    background: var(--border); transition: background 0.3s;
+  }
+  .round-pip.done { background: var(--accent2); }
+  .round-pip.current { background: var(--accent); }
+  .round-badge {
+    font-family: 'DM Mono', monospace; font-size: 0.7rem; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--text-mid);
+  }
+
+  /* Turn counter */
+  .turn-counter {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 16px 20px; margin-bottom: 16px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .turn-label { font-family: 'DM Mono', monospace; font-size: 0.65rem; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); }
+  .turn-num { font-size: 1.6rem; font-weight: 800; letter-spacing: -1px; color: var(--text); }
+  .cubes-left { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--text-mid); text-align: right; }
+  .cubes-num { font-size: 1.1rem; font-weight: 700; color: var(--accent); display: block; }
+
+  /* Automa action card */
+  .action-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; overflow: hidden; margin-bottom: 16px;
+    transition: border-color 0.2s;
+  }
+  .action-card-header {
+    padding: 14px 20px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .action-card-title { font-family: 'DM Mono', monospace; font-size: 0.65rem; letter-spacing: 3px; text-transform: uppercase; color: var(--text-dim); }
+  .action-card-round { font-family: 'DM Mono', monospace; font-size: 0.65rem; color: var(--accent); }
+
+  .actions-list { padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; }
+  .action-item {
+    display: flex; gap: 14px; align-items: flex-start;
+    padding: 12px 14px; border-radius: 10px;
+    background: var(--surface2); border: 1px solid var(--border);
+  }
+  .action-icon {
+    width: 36px; height: 36px; border-radius: 8px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem; font-weight: 700; font-family: 'DM Mono', monospace;
+  }
+  .action-icon.type-draw { background: rgba(90,148,170,0.12); color: var(--accent3); }
+  .action-icon.type-play { background: rgba(184,106,48,0.12); color: var(--accent); }
+  .action-icon.type-egg { background: rgba(201,149,42,0.12); color: var(--accent2); }
+  .action-icon.type-food { background: rgba(42,138,74,0.12); color: var(--green); }
+  .action-icon.type-cube-add { background: rgba(90,148,170,0.12); color: var(--accent3); }
+  .action-icon.type-cube-remove { background: rgba(184,48,48,0.12); color: var(--danger); }
+  .action-icon.type-pink { background: rgba(180,80,180,0.12); color: #c060c0; }
+  :root.dark .action-icon.type-pink { color: #e090e0; }
+
+  .action-text { flex: 1; }
+  .action-title { font-size: 0.88rem; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+  .action-desc { font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--text-mid); line-height: 1.6; }
+  .action-desc strong { color: var(--text); }
+
+  /* Nectar tracker */
+  .nectar-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 16px 20px; margin-bottom: 16px;
+  }
+  .nectar-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .nectar-title { font-family: 'DM Mono', monospace; font-size: 0.65rem; letter-spacing: 3px; text-transform: uppercase; color: var(--text-dim); }
+  .nectar-note { font-family: 'DM Mono', monospace; font-size: 0.6rem; color: var(--text-dim); }
+
+  .nectar-habitats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .nectar-hab {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+  }
+  .hab-name { font-family: 'DM Mono', monospace; font-size: 0.6rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); }
+  .hab-count { font-size: 1.6rem; font-weight: 800; letter-spacing: -1px; color: var(--accent); font-family: 'Syne', sans-serif; }
+  .hab-controls { display: flex; gap: 4px; }
+  .hab-btn {
+    width: 26px; height: 26px; border-radius: 50%;
+    border: 1.5px solid var(--border); background: var(--surface);
+    color: var(--text-mid); cursor: pointer; font-size: 0.9rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s; line-height: 1;
+  }
+  .hab-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .hab-btn:active { transform: scale(0.9); }
+
+  /* Goal scoring */
+  .goal-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 16px 20px; margin-bottom: 16px;
+  }
+  .goal-title { font-family: 'DM Mono', monospace; font-size: 0.65rem; letter-spacing: 3px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 12px; }
+  .goal-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .goal-label { flex: 1; font-size: 0.8rem; color: var(--text-mid); font-family: 'DM Mono', monospace; }
+  .goal-val { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700; color: var(--text); width: 36px; text-align: right; }
+  .goal-formula { font-family: 'DM Mono', monospace; font-size: 0.65rem; color: var(--text-dim); margin-top: 4px; padding-top: 10px; border-top: 1px solid var(--border); }
+
+  /* End-of-round button */
+  .eor-btn {
+    width: 100%; padding: 14px; margin-bottom: 10px;
+    background: var(--surface2); border: 1.5px solid var(--border);
+    border-radius: 12px; color: var(--text-mid);
+    font-family: 'Syne', sans-serif; font-size: 0.82rem; font-weight: 700;
+    letter-spacing: 0.5px; cursor: pointer; transition: all 0.2s;
+  }
+  .eor-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .next-turn-btn {
+    width: 100%; padding: 16px; margin-bottom: 10px;
+    background: var(--accent); border: none; border-radius: 12px;
+    color: white; font-family: 'Syne', sans-serif; font-size: 0.9rem; font-weight: 700;
+    letter-spacing: 1px; text-transform: uppercase; cursor: pointer;
+    transition: all 0.2s; box-shadow: 0 3px 12px rgba(0,0,0,0.15);
+  }
+  .next-turn-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+  .next-turn-btn:active { transform: translateY(0); }
+  .next-turn-btn:disabled { opacity: 0.4; cursor: default; transform: none; }
+
+  /* End of round panel */
+  .eor-panel {
+    background: var(--surface); border: 1.5px solid var(--accent);
+    border-radius: 16px; padding: 20px; margin-bottom: 16px;
+  }
+  .eor-panel h3 { font-size: 1rem; font-weight: 700; margin-bottom: 16px; color: var(--accent); }
+  .eor-step { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+  .eor-step:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .eor-num { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: white; font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .eor-text { font-family: 'DM Mono', monospace; font-size: 0.75rem; color: var(--text-mid); line-height: 1.6; }
+  .eor-text strong { color: var(--text); }
+
+  /* Nectar adjustment display */
+  .nectar-adjust {
+    display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-top: 10px;
+  }
+  .nadj-hab {
+    background: var(--surface2); border-radius: 8px; padding: 8px;
+    text-align: center; border: 1px solid var(--border);
+  }
+  .nadj-name { font-family: 'DM Mono', monospace; font-size: 0.58rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); margin-bottom: 4px; }
+  .nadj-delta { font-size: 0.9rem; font-weight: 700; }
+  .nadj-delta.pos { color: var(--green); }
+  .nadj-delta.neg { color: var(--danger); }
+  .nadj-delta.zero { color: var(--text-dim); }
+
+  /* Final score screen */
+  .score-box {
+    background: linear-gradient(135deg, var(--surface2), var(--surface));
+    border: 1px solid var(--border); border-radius: 16px;
+    padding: 24px 20px; margin-bottom: 16px;
+  }
+  .score-box h2 { font-size: 1rem; font-weight: 700; color: var(--text-mid); margin-bottom: 20px; font-family: 'DM Mono', monospace; letter-spacing: 2px; text-transform: uppercase; }
+  .score-row { display: flex; align-items: baseline; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .score-row:last-child { border-bottom: none; }
+  .score-item { font-family: 'DM Mono', monospace; font-size: 0.75rem; color: var(--text-mid); }
+  .score-pts { font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 700; color: var(--text); }
+  .score-total-row { display: flex; align-items: baseline; justify-content: space-between; margin-top: 16px; padding-top: 16px; border-top: 2px solid var(--accent); }
+  .score-total-label { font-size: 1rem; font-weight: 700; color: var(--text); }
+  .score-total-num { font-size: 2rem; font-weight: 800; color: var(--accent); letter-spacing: -1px; }
+
+  .new-game-btn {
+    width: 100%; padding: 16px;
+    background: var(--surface2); border: 1.5px solid var(--border);
+    border-radius: 12px; color: var(--text-mid);
+    font-family: 'Syne', sans-serif; font-size: 0.85rem; font-weight: 700;
+    cursor: pointer; transition: all 0.2s; letter-spacing: 0.5px;
+  }
+  .new-game-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Status badge */
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-family: 'DM Mono', monospace; font-size: 0.65rem;
+    padding: 3px 8px; border-radius: 20px; letter-spacing: 1px;
+  }
+  .status-badge.solo { background: rgba(90,148,170,0.1); color: var(--accent3); border: 1px solid rgba(90,148,170,0.25); }
+  .status-badge.multi { background: rgba(184,106,48,0.1); color: var(--accent); border: 1px solid rgba(184,106,48,0.2); }
+  .status-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+  /* Difficulty badge */
+  .diff-badge {
+    font-family: 'DM Mono', monospace; font-size: 0.62rem; letter-spacing: 1px;
+    padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border);
+    color: var(--text-dim); background: var(--surface2);
+  }
+
+  /* Info box */
+  .info-box {
+    background: var(--surface2); border-radius: 10px; padding: 12px 14px;
+    font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--text-mid);
+    line-height: 1.7; margin-bottom: 16px; border: 1px solid var(--border);
+  }
+  .info-box strong { color: var(--text); }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--text); color: var(--bg); padding: 9px 18px; border-radius: 20px; font-family: 'DM Mono', monospace; font-size: 0.75rem; font-weight: 500; box-shadow: 0 4px 16px rgba(0,0,0,0.2); z-index: 1000; transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1); white-space: nowrap; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+  .screen.active { animation: fadeUp 0.35s ease both; }
+
+  @media (max-width: 480px) {
+    .container { padding: 0 16px 60px; }
+    header { padding: 52px 0 24px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="fixed-controls">
+  <button class="ctrl-btn" onclick="toggleTheme()" title="Toggle theme">
+    <span class="icon-sun">&#9788;</span>
+    <span class="icon-moon">&#9790;</span>
+  </button>
+</div>
+
+<div class="container">
+
+  <header>
+  <div class="header-img" style="background-image:url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAoHBwgHBgoICAgLCgoLDhgQDg0NDh0VFhEYIx8lJCIfIiEmKzcvJik0KSEiMEExNDk7Pj4+JS5ESUM8SDc9Pjv/2wBDAQoLCw4NDhwQEBw7KCIoOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozv/wAARCAFoAoADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD1+iiigQUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUDCiiigAooooAKKKKACiiigAopcUUAJRS0UAJS0UUAFFFFACUUtFACUUtFABRRRQAUUUUAFFFFABRRRQAUUZpM0ALRSZFLmgAopM0uaACikzS0AFFFFABRRRQAUUUUAFFFJmgBaKbmkMgHegQ+imectKHB70AOopMilzQMKKKKAEooooEFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFAwooooAKKKKACiiigAooooAKKXFFACUUtFABiiiigBKWiigAooooAKKKKACijNJmgBaKTNGaAFopu7FG8etADqKZ5g9aTzB60ASUVEZQKPNFAiWiovN9qQyGgCakNQF2Pem/iaVwJi4XqaY0hPSoX6gDrT6LgLk+tLupKSgB24+tG8+tNooAdvb1o8xvWm0maAH+Y1NLMf4jSUooAAXH8Rp4lYDnmmUtADvNb0FJ5j000ZoAd5j0ySSQLxTqjY72wDxQAyEysSzsQOwqagDilxQAUUUlAC5I70odh3ptFAEglOelO80VDRQBZooopgFFFFABRRRQAUUUUDCiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKX8KAEpaKKACiiigAooooAKKKKACijNGaACijNJmgBaKTdSbqBDqKYZAO9NMq0APNNZ1TqQKjaQnocVXmhVxliT+NFwLJfd0NN5pkRHlin0gCiiikAlFFFABSUUuKAAUuaSimAtJS0h6UARDJlqaooxklqkFIBaQ0tJQAlLQaKAEoxS0UwDFFFFABRRQaACkzRSM20UCGu/O0d6cq7RSRrnk9afjFAxR0opKKACijNFABRS4ooASiiigCzRRRTAKKKKACiiigYUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRS0UAJS0UUAFFFFABRRRQAUUUUABpKQsAOtRPOo4HNAiUkDqcU0uuMjmsy5aeQgqCQDVqEkxj1pXAn80+lIZCaZRQAu4nvRSUUgCjtRSUAFIfumlFLQBHCeCPSpRUSfLKRUlAC0mKWigBKKKKYBiilooASilpKACkfhTS5qOb7vWgQsX3afSINq0o4oGFBpOtAFIApRRRTAWiik6UAFFNLeho5oAdmm5NJk5o3e+KYrik460xcyNnsKaWZ22jn3qZV2jFAhcelGcUZo4NIoTNFLRQAUtJS0AFFFJmgBce9FN3UZoAtUUUUwCiiigAooooGFFFFABRRRQAUUUUAFFFFABRiijigAopaKAEpaKKACiiigAooooAKKTNGaAFoppYDqaaZAPegQ/NGaiMp7U0sx6mgCYsB3pjSgdKiopXAQkvyx/CgAelFFIBcVGvySFexp/NMlXK7h1FAEoopituXIp2aAA0UUUAFGKDQKACilopgRP8AK4apRTJRlaVeUFAC0E0UmKQBS0YopgKKKKQk0ALnFNJ96QknrSbR60CFqKTJYDNPIIPXNRp80/TpTEWK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')"></div>
+    <a class="back-link" href="../">← Home</a>
+    <div class="header-label" id="header-label">Wingspan · Oceania</div>
+    <h1>Automa <span class="dim">Helper</span></h1>
+    <p class="header-sub">Simulates Automa turns so you can focus on your game.</p>
+  </header>
+
+  <!-- SETUP SCREEN -->
+  <div class="screen active" id="screen-setup">
+
+    <div class="setup-section">
+      <div class="section-label">Mode</div>
+      <div class="option-grid">
+        <button class="opt-btn active" id="mode-solo" onclick="setMode('solo')">
+          Solo
+          <span class="opt-sub">1 player vs Automa</span>
+        </button>
+        <button class="opt-btn" id="mode-multi" onclick="setMode('multi')">
+          Automarazzi
+          <span class="opt-sub">2–4 players vs Automa</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="setup-section">
+      <div class="section-label">Expansion</div>
+      <div class="option-grid">
+        <button class="opt-btn active" id="exp-oceania" onclick="setExpansion(true)">
+          With Oceania
+          <span class="opt-sub">Nectar tracking included</span>
+        </button>
+        <button class="opt-btn" id="exp-base" onclick="setExpansion(false)">
+          Base Game Only
+          <span class="opt-sub">No nectar mechanic</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="setup-section">
+      <div class="section-label">Difficulty</div>
+      <div class="option-grid">
+        <button class="opt-btn" id="diff-eaglet" onclick="setDiff('eaglet')">
+          Eaglet
+          <span class="opt-sub">Easy · 3 VP/face-down</span>
+        </button>
+        <button class="opt-btn active" id="diff-eagle" onclick="setDiff('eagle')">
+          Eagle
+          <span class="opt-sub">Normal · 4 VP/face-down</span>
+        </button>
+        <button class="opt-btn" id="diff-eee" onclick="setDiff('eee')">
+          Eagle-eyed
+          <span class="opt-sub">Hard · 5 VP/face-down</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="setup-section">
+      <div class="section-label">Automubon Society card</div>
+      <div class="option-grid">
+        <button class="opt-btn active" id="automubon-no" onclick="setAutomubon(false)">
+          No
+          <span class="opt-sub">Recommended for beginners</span>
+        </button>
+        <button class="opt-btn" id="automubon-yes" onclick="setAutomubon(true)">
+          Yes
+          <span class="opt-sub">Extra challenge</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="info-box">
+      <strong>Before starting:</strong> Draw a bonus card for Automa (avoid Breeding Manager or Backyard Birder). <span id="setup-nectar-text">Set up the Spent Nectar Collection card with <span id="setup-nectar-hint">4</span> nectar tokens in each habitat box. </span>You always go first.
+    </div>
+
+    <button class="start-btn" onclick="startGame()">Start Game</button>
+  </div>
+
+  <!-- GAME SCREEN -->
+  <div class="screen" id="screen-game">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <span class="status-badge" id="mode-badge"></span>
+      <span class="diff-badge" id="diff-badge"></span>
+    </div>
+
+    <div class="round-indicator">
+      <div class="round-pips">
+        <div class="round-pip" id="pip-1"></div>
+        <div class="round-pip" id="pip-2"></div>
+        <div class="round-pip" id="pip-3"></div>
+        <div class="round-pip" id="pip-4"></div>
+      </div>
+      <div class="round-badge" id="round-badge">Round 1</div>
+    </div>
+
+    <div class="turn-counter">
+      <div>
+        <div class="turn-label">Automa Turn</div>
+        <div class="turn-num" id="turn-num">1</div>
+      </div>
+      <div>
+        <div class="cubes-left"><span class="cubes-num" id="cubes-left">8</span>cubes left</div>
+      </div>
+    </div>
+
+    <!-- Action card (hidden until turn drawn) -->
+    <div class="action-card" id="action-card" style="display:none">
+      <div class="action-card-header">
+        <span class="action-card-title">Automa Actions This Turn</span>
+        <span class="action-card-round" id="action-card-round"></span>
+      </div>
+      <div class="actions-list" id="actions-list"></div>
+    </div>
+
+    <!-- Nectar tracker -->
+    <div id="nectar-section">
+    <div class="nectar-card">
+      <div class="nectar-card-header">
+        <span class="nectar-title">Spent Nectar · Automa</span>
+        <span class="nectar-note">adjust manually if needed</span>
+      </div>
+      <div class="nectar-habitats">
+        <div class="nectar-hab">
+          <div class="hab-name">Forest</div>
+          <div class="hab-count" id="nectar-forest">4</div>
+          <div class="hab-controls">
+            <button class="hab-btn" onclick="adjustNectar('forest',-1)">−</button>
+            <button class="hab-btn" onclick="adjustNectar('forest',1)">+</button>
+          </div>
+        </div>
+        <div class="nectar-hab">
+          <div class="hab-name">Wetland</div>
+          <div class="hab-count" id="nectar-wetland">4</div>
+          <div class="hab-controls">
+            <button class="hab-btn" onclick="adjustNectar('wetland',-1)">−</button>
+            <button class="hab-btn" onclick="adjustNectar('wetland',1)">+</button>
+          </div>
+        </div>
+        <div class="nectar-hab">
+          <div class="hab-name">Grassland</div>
+          <div class="hab-count" id="nectar-grassland">4</div>
+          <div class="hab-controls">
+            <button class="hab-btn" onclick="adjustNectar('grassland',-1)">−</button>
+            <button class="hab-btn" onclick="adjustNectar('grassland',1)">+</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    </div><!-- /nectar-section -->
+    <!-- End of round panel (hidden) -->
+    <div id="eor-panel" style="display:none"></div>
+
+    <button class="next-turn-btn" id="next-turn-btn" onclick="drawTurn()">Draw Automa Turn</button>
+    <button class="eor-btn" id="eor-btn" onclick="endOfRound()" style="display:none">End of Round →</button>
+    <button class="eor-btn" onclick="goToScoring()" style="margin-top:4px;opacity:0.5">Skip to Final Scoring</button>
+  </div>
+
+  <!-- FINAL SCORE SCREEN -->
+  <div class="screen" id="screen-score">
+    <div class="score-box">
+      <h2>Automa Final Score</h2>
+      <div class="score-row"><span class="score-item">Round goals</span><span class="score-pts" id="sc-goals">—</span></div>
+      <div class="score-row"><span class="score-item">Face-up birds</span><span class="score-pts" id="sc-faceup">—</span></div>
+      <div class="score-row"><span class="score-item">Face-down birds</span><span class="score-pts" id="sc-facedown">—</span></div>
+      <div class="score-row"><span class="score-item">Eggs</span><span class="score-pts" id="sc-eggs">—</span></div>
+      <div class="score-row" id="sc-nectar-row"><span class="score-item">Nectar (habitats won)</span><span class="score-pts" id="sc-nectar">—</span></div>
+      <div class="score-total-row">
+        <span class="score-total-label">Total (estimated)</span>
+        <span class="score-total-num" id="sc-total">—</span>
+      </div>
+    </div>
+
+    <div class="info-box">
+      <strong>To calculate exactly:</strong> Count Automa's face-up bird points manually. Add eggs (1 pt each). Add face-down birds × <span id="sc-facedown-rate">4</span> pts. Add round goal points. <span id="sc-nectar-note">Compare nectar per habitat — most nectar = 5 pts, second = 2 pts.</span> Automa does NOT score bonus card points.
+      <br><br><strong>Tiebreaker:</strong> Automa has 2 food tokens. You need 3+ to win on a tie.
+    </div>
+
+    <button class="new-game-btn" onclick="newGame()">New Game</button>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Theme ──
+if (localStorage.getItem('wsTheme') === 'dark') document.documentElement.classList.add('dark');
+function toggleTheme() {
+  const d = document.documentElement.classList.toggle('dark');
+  localStorage.setItem('wsTheme', d ? 'dark' : 'light');
+}
+
+// ── State ──
+let mode = 'solo';        // 'solo' | 'multi'
+let difficulty = 'eagle'; // 'eaglet' | 'eagle' | 'eee'
+let automubon = false;
+let hasOceania = true;
+let round = 1;
+let turnInRound = 1;
+let cubesLeft = 8;        // Automa starts with 8 cubes
+let actionCubesOnGoal = [0, 0, 0, 0]; // per round goal tile
+let nectar = { forest: 4, wetland: 4, grassland: 4 };
+let faceUpBirds = 0;
+let faceDownBirds = 0;
+let eggs = 0;
+let eorShown = false;
+
+// Cubes available per round (action cubes = 8 minus used)
+// In Wingspan, each player gets fewer actions each round: R1=8, R2=7, R3=6, R4=5
+const ACTIONS_PER_ROUND = { 1:8, 2:7, 3:6, 4:5 };
+
+// ── Automa card deck simulation ──
+// Base game: 10 cards (11 with Automubon). We simulate the card actions as
+// probability-weighted random draws per round section.
+// Each card has 4 round sections. We encode actions as arrays.
+
+// Actions: 'draw' | 'play' | 'egg' | 'food' | 'cube+' | 'cube-' | 'pink'
+// Based on official card data from the rulebook
+const BASE_CARDS = [
+  // [round1_actions, round2_actions, round3_actions, round4_actions]
+  [['draw'],          ['egg','egg'],    ['cube+'],       ['play','cube-']],
+  [['play'],          ['draw'],         ['egg','egg'],   ['cube+','cube+']],
+  [['egg'],           ['play'],         ['draw'],        ['egg','egg','egg']],
+  [['cube+'],         ['food'],         ['play'],        ['draw']],
+  [['food'],          ['cube+'],        ['food','egg'],  ['play']],
+  [['egg','egg'],     ['draw','cube-'], ['play'],        ['food','cube+']],
+  [['draw','cube+'],  ['egg'],          ['food'],        ['egg','cube-']],
+  [['play','egg'],    ['cube+'],        ['cube-','draw'],['food']],
+  [['cube-'],         ['food','play'],  ['egg','cube+'], ['draw','play']],
+  [['food','cube-'],  ['egg','cube+'],  ['draw','play'], ['cube-','egg']],
+  // Automubon Society (expert card — adds extra cube+ to goal)
+  [['cube+'],         ['cube+'],        ['cube+'],       ['cube+']],
+];
+
+// RAOUtoma card (Oceania) — added to deck
+const RAOUTOMA = [
+  [['cube+','egg']],
+  [['draw','cube-']],
+  [['play','cube+']],
+  [['food','egg','egg']],
+];
+
+// Cards removed after certain rounds
+// Base: card index 0 removed after round 1, card 1 after round 2, card 2 after round 3
+// We simulate by tracking removed cards
+let removedAfterRound = { 1: [0], 2: [1], 3: [2] };
+let availableCards = [];
+let usedCardIndices = [];
+
+function buildDeck() {
+  availableCards = [];
+  for (let i = 0; i < 10; i++) availableCards.push(i);
+  if (automubon) availableCards.push(10);
+  if (hasOceania) availableCards.push('rao'); // RAOUtoma only with Oceania
+  shuffleDeck();
+}
+
+function shuffleDeck() {
+  for (let i = availableCards.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [availableCards[i], availableCards[j]] = [availableCards[j], availableCards[i]];
+  }
+  usedCardIndices = [];
+}
+
+function drawCard() {
+  if (usedCardIndices.length >= availableCards.length) shuffleDeck();
+  const idx = usedCardIndices.length;
+  usedCardIndices.push(idx);
+  return availableCards[idx];
+}
+
+function removeCardsAfterRound(r) {
+  const toRemove = removedAfterRound[r] || [];
+  availableCards = availableCards.filter(c => !toRemove.includes(c));
+  shuffleDeck();
+}
+
+function getCardActions(cardKey, roundNum) {
+  if (cardKey === 'rao') {
+    return RAOUTOMA[roundNum - 1][0];
+  }
+  return BASE_CARDS[cardKey][roundNum - 1];
+}
+
+// ── Setup ──
+function setMode(m) {
+  mode = m;
+  document.getElementById('mode-solo').classList.toggle('active', m === 'solo');
+  document.getElementById('mode-multi').classList.toggle('active', m === 'multi');
+}
+
+function setDiff(d) {
+  difficulty = d;
+  ['eaglet','eagle','eee'].forEach(x =>
+    document.getElementById('diff-'+x).classList.toggle('active', x === d)
+  );
+  const startNectar = {eaglet:3, eagle:4, eee:5}[d];
+  document.getElementById('setup-nectar-hint').textContent = startNectar;
+}
+
+function setAutomubon(v) {
+  automubon = v;
+  document.getElementById('automubon-no').classList.toggle('active', !v);
+  document.getElementById('automubon-yes').classList.toggle('active', v);
+}
+
+function setExpansion(v) {
+  hasOceania = v;
+  document.getElementById('exp-oceania').classList.toggle('active', v);
+  document.getElementById('exp-base').classList.toggle('active', !v);
+  // Update nectar hint visibility
+  document.getElementById('setup-nectar-text').style.display = v ? 'inline' : 'none';
+  // Update header label
+  document.getElementById('header-label').textContent = v ? 'Wingspan · Oceania' : 'Wingspan · Base Game';
+  // Difficulty hint
+  const startNectar = {eaglet:3, eagle:4, eee:5}[difficulty];
+  if (v) document.getElementById('setup-nectar-hint').textContent = startNectar;
+}
+
+function startGame() {
+  const startNectar = {eaglet:3, eagle:4, eee:5}[difficulty];
+  nectar = hasOceania
+    ? { forest: startNectar, wetland: startNectar, grassland: startNectar }
+    : { forest: 0, wetland: 0, grassland: 0 };
+  round = 1; turnInRound = 1; eorShown = false;
+  cubesLeft = 8;
+  actionCubesOnGoal = [0,0,0,0];
+  faceUpBirds = 0; faceDownBirds = 0; eggs = 0;
+
+  buildDeck();
+  updateNectarDisplay();
+  showScreen('game');
+  updateGameUI();
+  document.getElementById('action-card').style.display = 'none';
+  document.getElementById('nectar-section').style.display = hasOceania ? 'block' : 'none';
+  document.getElementById('eor-panel').style.display = 'none';
+  document.getElementById('next-turn-btn').disabled = false;
+  document.getElementById('next-turn-btn').textContent = 'Draw Automa Turn';
+  document.getElementById('eor-btn').style.display = 'none';
+}
+
+// ── Game UI ──
+function updateGameUI() {
+  // Pips
+  for (let r = 1; r <= 4; r++) {
+    const pip = document.getElementById('pip-'+r);
+    pip.className = 'round-pip' + (r < round ? ' done' : r === round ? ' current' : '');
+  }
+  document.getElementById('round-badge').textContent = 'Round ' + round;
+  document.getElementById('turn-num').textContent = turnInRound;
+  document.getElementById('cubes-left').textContent = cubesLeft;
+
+  // Mode badge
+  const mb = document.getElementById('mode-badge');
+  mb.className = 'status-badge ' + (mode === 'solo' ? 'solo' : 'multi');
+  mb.innerHTML = '<span class="status-dot"></span>' + (mode === 'solo' ? 'Solo' : 'Automarazzi');
+
+  // Diff badge
+  const db = document.getElementById('diff-badge');
+  db.textContent = {eaglet:'Eaglet', eagle:'Eagle', eee:'Eagle-eyed Eagle'}[difficulty];
+}
+
+// ── Draw a turn ──
+function drawTurn() {
+  if (cubesLeft <= 0) {
+    showToast('No cubes left — end of round');
+    return;
+  }
+
+  const cardKey = drawCard();
+  const actions = getCardActions(cardKey, round);
+
+  // Resolve actions
+  const renderedActions = [];
+  let goalCubeChange = 0;
+
+  actions.forEach(action => {
+    switch(action) {
+      case 'draw':
+        faceDownBirds++;
+        renderedActions.push({
+          type: 'draw',
+          icon: 'DC',
+          title: 'Draw Cards',
+          desc: 'Discard <strong>all 3 face-up birds</strong> from the tray. Draw 1 from the deck, place it <strong>face-down</strong> in Automa\'s supply.'
+        });
+        break;
+      case 'play':
+        faceUpBirds += 0; // scored by point value, tracked manually
+        renderedActions.push({
+          type: 'play',
+          icon: 'PB',
+          title: 'Play a Bird',
+          desc: 'Take all face-up birds matching Automa\'s bonus card. Keep the <strong>highest point value</strong> face-up; discard rest. If none match, draw 1 face-down bird instead.'
+        });
+        break;
+      case 'egg':
+        eggs++;
+        renderedActions.push({
+          type: 'egg',
+          icon: 'EG',
+          title: 'Lay an Egg',
+          desc: 'Give Automa <strong>1 egg token</strong> from the supply.'
+        });
+        break;
+      case 'food':
+        renderedActions.push({
+          type: 'food',
+          icon: 'GF',
+          title: 'Gain Food',
+          desc: 'If all birdfeeder dice show the same face, reroll all. Then remove <strong>all dice of the first available food type</strong> (left-to-right key on card). Automa keeps no food — just remove the dice.'
+        });
+        break;
+      case 'cube+':
+        actionCubesOnGoal[round-1]++;
+        goalCubeChange++;
+        renderedActions.push({
+          type: 'cube-add',
+          icon: '+C',
+          title: 'Place Goal Cube',
+          desc: 'Place <strong>1 Automa action cube</strong> on the Round ' + round + ' goal tile. (Total on tile: ' + actionCubesOnGoal[round-1] + ')'
+        });
+        break;
+      case 'cube-':
+        if (actionCubesOnGoal[round-1] > 0) {
+          actionCubesOnGoal[round-1]--;
+          goalCubeChange--;
+          renderedActions.push({
+            type: 'cube-remove',
+            icon: '−C',
+            title: 'Remove Goal Cube',
+            desc: 'Remove <strong>1 Automa action cube</strong> from the Round ' + round + ' goal tile. (Remaining: ' + actionCubesOnGoal[round-1] + ')'
+          });
+        } else {
+          renderedActions.push({
+            type: 'cube-remove',
+            icon: '−C',
+            title: 'Remove Goal Cube',
+            desc: 'No cubes on this goal tile — <strong>ignore this action</strong>.'
+          });
+        }
+        break;
+      case 'pink':
+        renderedActions.push({
+          type: 'pink',
+          icon: 'PK',
+          title: 'Activate Pink Powers',
+          desc: mode === 'solo'
+            ? 'Activate <strong>all pink powers</strong> on your player mat (Automa does nothing).'
+            : 'Pink powers may only trigger once between your turns. Automa does not activate any that have triggered since your last turn.'
+        });
+        break;
+    }
+  });
+
+  // Render
+  const list = document.getElementById('actions-list');
+  list.innerHTML = '';
+  renderedActions.forEach(a => {
+    const el = document.createElement('div');
+    el.className = 'action-item';
+    el.innerHTML = `
+      <div class="action-icon type-${a.type}">${a.icon}</div>
+      <div class="action-text">
+        <div class="action-title">${a.title}</div>
+        <div class="action-desc">${a.desc}</div>
+      </div>`;
+    list.appendChild(el);
+  });
+
+  document.getElementById('action-card').style.display = 'block';
+  document.getElementById('action-card-round').textContent = 'Round ' + round;
+
+  // Update state
+  cubesLeft--;
+  if (cubesLeft <= 0) {
+    // Last turn of round
+    document.getElementById('next-turn-btn').disabled = true;
+    document.getElementById('next-turn-btn').textContent = 'All cubes used';
+    document.getElementById('eor-btn').style.display = round < 4 ? 'block' : 'none';
+    if (round === 4) {
+      document.getElementById('eor-btn').style.display = 'none';
+      setTimeout(() => showEorPanel(true), 300);
+    }
+  } else {
+    document.getElementById('next-turn-btn').textContent = 'Draw Automa Turn';
+    document.getElementById('eor-btn').style.display = 'none';
+  }
+
+  turnInRound++;
+  updateGameUI();
+}
+
+// ── Nectar ──
+function adjustNectar(hab, delta) {
+  nectar[hab] = Math.max(0, nectar[hab] + delta);
+  updateNectarDisplay();
+}
+function updateNectarDisplay() {
+  ['forest','wetland','grassland'].forEach(h => {
+    document.getElementById('nectar-' + h).textContent = nectar[h];
+  });
+}
+
+// ── End of Round ──
+function endOfRound() {
+  showEorPanel(false);
+}
+
+function showEorPanel(isFinal) {
+  // Simulate nectar adjustment (Oceania only)
+  if (!hasOceania) {
+    // No nectar in base game
+    const panel = document.getElementById('eor-panel');
+    if (isFinal) {
+      panel.innerHTML = `
+        <div class="eor-panel">
+          <h3>End of Round ${round} + Final Scoring</h3>
+          <div class="eor-step"><div class="eor-num">1</div><div class="eor-text">Score end-of-round goal: Automa's quantity = <strong>base value + ${actionCubesOnGoal[round-1]} cubes</strong> on this goal tile.</div></div>
+          <div class="eor-step"><div class="eor-num">2</div><div class="eor-text">Proceed to <strong>final scoring</strong>.</div></div>
+          <button class="next-turn-btn" style="margin-top:16px" onclick="goToScoring()">Calculate Final Score</button>
+        </div>`;
+    } else {
+      panel.innerHTML = `
+        <div class="eor-panel">
+          <h3>End of Round ${round}</h3>
+          <div class="eor-step"><div class="eor-num">1</div><div class="eor-text">Score end-of-round goal: Automa's quantity = <strong>base value + ${actionCubesOnGoal[round-1]} cubes</strong> on this round's goal tile.</div></div>
+          <div class="eor-step"><div class="eor-num">2</div><div class="eor-text">Flip the Current Round Tracker card to Round ${round+1}. Remove the Automa card marked "Remove after Round ${round}" and reshuffle the deck.</div></div>
+          <button class="next-turn-btn" style="margin-top:16px" onclick="nextRound()">Start Round ${round+1}</button>
+        </div>`;
+    }
+    panel.style.display = 'block';
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    document.getElementById('eor-btn').style.display = 'none';
+    return;
+  }
+
+  // Simulate nectar adjustment: draw 2 cards, resolve cube icons
+  // Each card has roughly 0-2 cube icons across habitats
+  // We simulate with random adjustments ±1 per habitat (2 draws)
+  const habs = ['forest','wetland','grassland'];
+  const deltas = { forest: 0, wetland: 0, grassland: 0 };
+
+  // Simple simulation: each of 2 draws, 50% chance +1 or -1 per habitat based on card icons
+  for (let draw = 0; draw < 2; draw++) {
+    habs.forEach(h => {
+      const r = Math.random();
+      if (r < 0.35) deltas[h]++; // add nectar
+      else if (r < 0.55) deltas[h]--; // remove nectar
+      // else no change
+    });
+  }
+
+  // Apply
+  habs.forEach(h => {
+    nectar[h] = Math.max(0, nectar[h] + deltas[h]);
+  });
+  updateNectarDisplay();
+
+  const panel = document.getElementById('eor-panel');
+
+  // OE End-of-round goal: no goal round gives +1 nectar per habitat
+  const noGoalNote = `<div class="eor-step"><div class="eor-num">!</div><div class="eor-text">If this round's goal tile is <strong>"No Goal"</strong>, add 1 nectar to each habitat on Automa's Spent Nectar card.</div></div>`;
+
+  const nectarAdjHtml = `
+    <div class="nectar-adjust">
+      ${habs.map(h => `
+        <div class="nadj-hab">
+          <div class="nadj-name">${h}</div>
+          <div class="nadj-delta ${deltas[h]>0?'pos':deltas[h]<0?'neg':'zero'}">${deltas[h]>0?'+':''}${deltas[h]}</div>
+        </div>`).join('')}
+    </div>`;
+
+  if (isFinal) {
+    panel.innerHTML = `
+      <div class="eor-panel">
+        <h3>End of Round ${round} + Final Scoring</h3>
+        <div class="eor-step"><div class="eor-num">1</div><div class="eor-text">Score end-of-round goal: Automa's quantity = <strong>base value + ${actionCubesOnGoal[round-1]} cubes</strong> on this goal tile. Check the End-of-Round Goal Scoring card for the base value.</div></div>
+        <div class="eor-step"><div class="eor-num">2</div><div class="eor-text">Adjust Automa's nectar (simulated below — or draw 2 Automa cards manually to adjust the Spent Nectar card):<br>${nectarAdjHtml}</div></div>
+        ${noGoalNote}
+        <div class="eor-step"><div class="eor-num">3</div><div class="eor-text">Proceed to <strong>final scoring</strong>.</div></div>
+        <button class="next-turn-btn" style="margin-top:16px" onclick="goToScoring()">Calculate Final Score</button>
+      </div>`;
+  } else {
+    panel.innerHTML = `
+      <div class="eor-panel">
+        <h3>End of Round ${round}</h3>
+        <div class="eor-step"><div class="eor-num">1</div><div class="eor-text">Score end-of-round goal: Automa's quantity = <strong>base value + ${actionCubesOnGoal[round-1]} cubes</strong> on this round's goal tile. Check the End-of-Round Goal Scoring card for base value.</div></div>
+        <div class="eor-step"><div class="eor-num">2</div><div class="eor-text">Adjust Automa's spent nectar (simulated below — or draw 2 Automa cards manually):<br>${nectarAdjHtml}</div></div>
+        ${noGoalNote}
+        <div class="eor-step"><div class="eor-num">3</div><div class="eor-text">Flip the Current Round Tracker card to Round ${round+1}. Remove the Automa card marked "Remove after Round ${round}" and reshuffle the deck.</div></div>
+        <button class="next-turn-btn" style="margin-top:16px" onclick="nextRound()">Start Round ${round+1}</button>
+      </div>`;
+  }
+
+  panel.style.display = 'block';
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  document.getElementById('eor-btn').style.display = 'none';
+}
+
+function nextRound() {
+  removeCardsAfterRound(round);
+  round++;
+  turnInRound = 1;
+  cubesLeft = ACTIONS_PER_ROUND[round];
+  actionCubesOnGoal[round-1] = 0;
+  eorShown = false;
+
+  document.getElementById('eor-panel').style.display = 'none';
+  document.getElementById('action-card').style.display = 'none';
+  document.getElementById('nectar-section').style.display = hasOceania ? 'block' : 'none';
+  document.getElementById('next-turn-btn').disabled = false;
+  document.getElementById('next-turn-btn').textContent = 'Draw Automa Turn';
+  document.getElementById('eor-btn').style.display = 'none';
+  updateGameUI();
+  showToast('Round ' + round + ' started');
+}
+
+// ── Final Score ──
+function goToScoring() {
+  const faceDownVP = {eaglet:3, eagle:4, eee:5}[difficulty];
+  const goalPts = actionCubesOnGoal.reduce((a,b)=>a+b,0); // rough — actual from goal board
+  const eggPts = eggs;
+  const fdPts = faceDownBirds * faceDownVP;
+
+  // Nectar: we can't know human player's nectar, show automa's counts
+  const nectarNote = `Forest: ${nectar.forest} · Wetland: ${nectar.wetland} · Grassland: ${nectar.grassland}`;
+
+  document.getElementById('sc-goals').textContent = '(see goal board)';
+  document.getElementById('sc-faceup').textContent = '(count manually)';
+  document.getElementById('sc-facedown').textContent = faceDownBirds + ' × ' + faceDownVP + ' = ' + fdPts;
+  document.getElementById('sc-eggs').textContent = eggPts + ' pt' + (eggPts!==1?'s':'');
+  document.getElementById('sc-nectar').textContent = nectarNote;
+  document.getElementById('sc-nectar-row').style.display = hasOceania ? 'flex' : 'none';
+  document.getElementById('sc-facedown-rate').textContent = faceDownVP;
+  document.getElementById('sc-total').textContent = '?';
+
+  const nectarNoteEl = document.getElementById('sc-nectar-note');
+  if (nectarNoteEl) nectarNoteEl.style.display = hasOceania ? 'inline' : 'none';
+  showScreen('score');
+}
+
+function newGame() { showScreen('setup'); }
+
+// ── Utilities ──
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+</script>
+</body>
+</html>
