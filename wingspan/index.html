@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wingspan · Oceania Score Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+ :root {
+ --cream: #f5f0e8;
+ --warm-white: #faf7f2;
+ --teal: #2d7d7a;
+ --teal-light: #3a9e9a;
+ --teal-dark: #1d5654;
+ --coral: #d4603a;
+ --coral-light: #e8845e;
+ --sand: #c8b89a;
+ --sand-light: #e0d4be;
+ --text-dark: #2a2118;
+ --text-mid: #5a4e3a;
+ --text-light: #8a7b65;
+ --gold: #c9952a;
+ --pink: #e86aaa;
+ }
+ :root.dark {
+ --cream: #0f0f12;
+ --warm-white: #17171e;
+ --teal: #3a9e9a;
+ --teal-light: #4dbdb8;
+ --teal-dark: #5ecdc8;
+ --coral: #e8845e;
+ --coral-light: #f0a080;
+ --sand: #44445a;
+ --sand-light: #2a2a38;
+ --text-dark: #e8e8f0;
+ --text-mid: #9090a8;
+ --text-light: #5a5a78;
+ --gold: #d4a83a;
+ --pink: #f080c0;
+ }
+ :root.dark body {
+ background-color: var(--cream);
+ }
+ :root.dark .score-card,
+ :root.dark .card,
+ :root.dark .nectar-card,
+ :root.dark .leaderboard-card,
+ :root.dark .game-item,
+ :root.dark .stat-chip {
+ background: var(--warm-white);
+ }
+ :root.dark .nectar-val { background: #1f1f2a; color: var(--text-dark); }
+ :root.dark .step-btn { background: #1f1f2a; border-color: var(--sand-light); }
+ :root.dark .count-btn { background: #1f1f2a; }
+ :root.dark .tab-bar { background: var(--warm-white); }
+ :root.dark .btn-reset { background: #1f1f2a; color: var(--text-mid); }
+ html, body, .score-card, .card, .nectar-card, .tab-bar, .results-section { transition: background 0.3s, border-color 0.3s, color 0.3s; }
+
+ /* Theme toggle button */
+ .theme-toggle {
+ position: fixed; top: 16px; right: 16px; z-index: 100;
+ width: 40px; height: 40px; border-radius: 50%;
+ border: 1.5px solid var(--sand-light);
+ background: var(--warm-white);
+ cursor: pointer; display: flex; align-items: center; justify-content: center;
+ font-size: 1rem;
+ box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+ transition: border-color 0.2s, transform 0.2s, background 0.3s;
+ }
+ .theme-toggle:hover { border-color: var(--teal); transform: scale(1.08); }
+ .icon-dark { display: block; }
+ .icon-light { display: none; }
+ :root.dark .icon-dark { display: none; }
+ :root.dark .icon-light { display: block; }
+
+ * { box-sizing: border-box; margin: 0; padding: 0; }
+
+ body {
+ background-color: var(--cream);
+ background-image:
+ radial-gradient(ellipse at 20% 10%, rgba(45,125,122,0.08) 0%, transparent 50%),
+ radial-gradient(ellipse at 80% 90%, rgba(212,96,58,0.06) 0%, transparent 50%);
+ min-height: 100vh;
+ font-family: 'Lato', sans-serif;
+ color: var(--text-dark);
+ padding: 16px;
+ }
+
+ header { text-align: center; padding: 20px 0 12px; }
+ .logo-bird { font-size: 2.2rem; line-height: 1; margin-bottom: 4px; filter: drop-shadow(0 2px 4px rgba(45,125,122,0.3)); }
+ header h1 { font-family: 'Playfair Display', serif; font-size: 1.6rem; color: var(--teal-dark); letter-spacing: 0.5px; }
+ header h1 span { color: var(--coral); font-style: italic; }
+ header p.subtitle { font-size: 0.72rem; color: var(--text-light); letter-spacing: 2px; text-transform: uppercase; margin-top: 4px; }
+
+ .tab-bar { display: flex; background: var(--warm-white); border-radius: 12px; padding: 4px; margin-bottom: 16px; border: 1px solid var(--sand-light); box-shadow: 0 2px 8px rgba(42,33,24,0.06); }
+ .tab-btn { flex: 1; padding: 10px 6px; border: none; border-radius: 9px; background: transparent; font-family: 'Lato', sans-serif; font-size: 0.82rem; font-weight: 700; color: var(--text-light); cursor: pointer; transition: all 0.2s; letter-spacing: 0.5px; }
+ .tab-btn.active { background: var(--teal); color: white; box-shadow: 0 2px 8px rgba(45,125,122,0.3); }
+ .tab-content { display: none; }
+ .tab-content.active { display: block; }
+
+ .divider { display: flex; align-items: center; gap: 10px; margin: 12px 0; }
+ .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: linear-gradient(to right, transparent, var(--sand), transparent); }
+ .divider span { font-size: 0.8rem; color: var(--sand); }
+
+ .card { background: var(--warm-white); border-radius: 16px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 12px rgba(42,33,24,0.07); border: 1px solid var(--sand-light); }
+ .card h2 { font-family: 'Playfair Display', serif; font-size: 1rem; color: var(--teal-dark); margin-bottom: 12px; }
+
+ .player-count-row { display: flex; gap: 8px; }
+ .count-btn { flex: 1; padding: 10px 6px; border: 2px solid var(--sand-light); border-radius: 10px; background: white; font-family: 'Playfair Display', serif; font-size: 1rem; color: var(--text-mid); cursor: pointer; transition: all 0.2s; text-align: center; }
+ .count-btn:hover { border-color: var(--teal-light); color: var(--teal); }
+ .count-btn.active { border-color: var(--teal); background: var(--teal); color: white; box-shadow: 0 2px 8px rgba(45,125,122,0.3); }
+
+ /* Score cards */
+ .score-card { background: var(--warm-white); border-radius: 16px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 12px rgba(42,33,24,0.07); border: 1px solid var(--sand-light); transition: box-shadow 0.2s; }
+ .score-card:focus-within { box-shadow: 0 4px 20px rgba(45,125,122,0.15); border-color: var(--teal-light); }
+ .player-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+ .player-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+ .player-name-input { flex: 1; border: none; border-bottom: 1.5px solid var(--sand-light); background: transparent; font-family: 'Playfair Display', serif; font-size: 1rem; color: var(--text-dark); padding: 2px 0; outline: none; transition: border-color 0.2s; }
+ .player-name-input:focus { border-color: var(--teal); }
+ .player-name-input::placeholder { color: var(--text-light); font-style: italic; }
+ .player-total { font-family: 'Playfair Display', serif; font-size: 1.3rem; font-weight: 600; color: var(--teal-dark); min-width: 32px; text-align: right; }
+ .categories { display: grid; gap: 8px; }
+ .cat-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; }
+ .cat-label { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: var(--text-mid); }
+ .cat-desc { font-size: 0.68rem; color: var(--text-light); display: block; }
+ .score-stepper { display: flex; align-items: center; gap: 6px; }
+ .step-btn { width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid var(--sand); background: white; font-size: 1rem; color: var(--text-mid); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; flex-shrink: 0; padding-bottom: 1px; }
+ .step-btn:hover { border-color: var(--teal); color: var(--teal); background: rgba(45,125,122,0.05); }
+ .step-btn:active { transform: scale(0.92); }
+ .score-val { width: 32px; text-align: center; font-family: 'Playfair Display', serif; font-size: 1.05rem; font-weight: 600; color: var(--text-dark); border: none; border-bottom: 1.5px solid var(--sand-light); background: transparent; outline: none; padding: 1px 0; -moz-appearance: textfield; }
+ .score-val::-webkit-inner-spin-button, .score-val::-webkit-outer-spin-button { -webkit-appearance: none; }
+ .score-val:focus { border-color: var(--teal); }
+ .p0 .player-icon { background: rgba(45,125,122,0.12); }
+ .p1 .player-icon { background: rgba(212,96,58,0.12); }
+ .p2 .player-icon { background: rgba(201,149,42,0.12); }
+ .p3 .player-icon { background: rgba(130,90,160,0.12); }
+ .p4 .player-icon { background: rgba(60,140,80,0.12); }
+ .cat-sep { height: 1px; background: var(--sand-light); margin: 4px 0; }
+ .section-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-light); margin: 10px 0 4px; font-weight: 700; }
+ .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+ .dot-bird { background: var(--teal); }
+ .dot-bonus { background: var(--coral); }
+ .dot-goal { background: var(--gold); }
+ .dot-egg { background: #e8c45a; }
+ .dot-food { background: #7ab87a; }
+ .dot-tucked { background: #8a6aaa; }
+
+ /* ── Nectar card ── */
+ .nectar-card {
+ background: var(--warm-white);
+ border-radius: 16px; padding: 16px;
+ margin-bottom: 12px;
+ box-shadow: 0 2px 12px rgba(42,33,24,0.07);
+ border: 1px solid rgba(232,106,170,0.3);
+ }
+ .nectar-card h2 { font-family: 'Playfair Display', serif; font-size: 1rem; color: var(--pink); margin-bottom: 4px; }
+ .nectar-subtitle { font-size: 0.7rem; color: var(--text-light); margin-bottom: 14px; font-style: italic; }
+
+ /* Habitat header row */
+ .nectar-grid {
+ display: grid;
+ gap: 0;
+ }
+ .nectar-header-row {
+ display: grid;
+ gap: 4px;
+ margin-bottom: 6px;
+ padding: 0 0 6px;
+ border-bottom: 1px solid var(--sand-light);
+ }
+ .nectar-player-row {
+ display: grid;
+ gap: 4px;
+ align-items: center;
+ padding: 5px 0;
+ border-bottom: 1px solid var(--sand-light);
+ }
+ .nectar-player-row:last-child { border-bottom: none; }
+
+ /* columns: name | forest | wetland | grassland | total */
+ .nectar-header-row,
+ .nectar-player-row {
+ grid-template-columns: 1fr repeat(3, 44px) 36px;
+ }
+
+ .nectar-col-head {
+ text-align: center; font-size: 0.68rem;
+ color: var(--text-light); line-height: 1.2;
+ }
+ .nectar-col-head .hab-icon { display: block; font-size: 1rem; }
+
+ .nectar-player-label {
+ font-size: 0.8rem; color: var(--text-dark);
+ white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+ }
+
+ .nectar-input-wrap { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+ .nectar-val {
+ width: 36px; height: 28px; text-align: center;
+ font-family: 'Playfair Display', serif; font-size: 0.95rem; font-weight: 600;
+ border: 1.5px solid var(--sand-light); border-radius: 7px;
+ background: white; outline: none; -moz-appearance: textfield;
+ transition: border-color 0.15s;
+ }
+ .nectar-val::-webkit-inner-spin-button, .nectar-val::-webkit-outer-spin-button { -webkit-appearance: none; }
+ .nectar-val:focus { border-color: var(--pink); }
+ .nectar-val.top { border-color: rgba(232,106,170,0.7); background: rgba(232,106,170,0.07); }
+
+ .nectar-pts-badge {
+ font-size: 0.68rem; font-weight: 700; color: var(--pink);
+ min-height: 14px; text-align: center; line-height: 1;
+ }
+
+ .nectar-total-cell {
+ text-align: right;
+ font-family: 'Playfair Display', serif;
+ font-size: 1rem; font-weight: 600;
+ color: var(--pink);
+ }
+
+ .nectar-note {
+ font-size: 0.68rem; color: var(--text-light);
+ margin-top: 10px; text-align: center; font-style: italic;
+ }
+
+ /* Results */
+ .results-section { display: none; margin-bottom: 16px; }
+ .results-section.visible { display: block; }
+ .results-box { background: linear-gradient(135deg, var(--teal-dark), var(--teal)); border-radius: 16px; padding: 20px 16px; color: white; box-shadow: 0 4px 20px rgba(29,86,84,0.4); position: relative; overflow: hidden; }
+ .results-box::before { content: ''; position: absolute; top: -10px; right: -10px; font-size: 5rem; opacity: 0.08; transform: rotate(-15deg); }
+ .results-box h2 { font-family: 'Playfair Display', serif; font-size: 1rem; letter-spacing: 2px; text-transform: uppercase; opacity: 0.8; margin-bottom: 14px; }
+ .result-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
+ .result-row:last-child { border-bottom: none; }
+ .result-rank { font-family: 'Playfair Display', serif; font-size: 1.2rem; width: 28px; text-align: center; opacity: 0.7; }
+ .result-rank.gold { opacity: 1; font-size: 1.4rem; }
+ .result-name { flex: 1; font-size: 0.95rem; font-weight: 300; }
+ .result-score { font-family: 'Playfair Display', serif; font-size: 1.4rem; font-weight: 600; }
+ .result-row.winner .result-score { font-size: 1.8rem; }
+ .result-row.winner .result-name { font-weight: 700; font-size: 1.05rem; }
+ .tiebreaker-note { font-size: 0.7rem; opacity: 0.6; margin-top: 10px; text-align: center; font-style: italic; }
+ .btn-save-game { width: 100%; margin-top: 12px; padding: 11px; background: rgba(255,255,255,0.15); border: 1.5px solid rgba(255,255,255,0.4); border-radius: 10px; color: white; font-family: 'Lato', sans-serif; font-size: 0.82rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: all 0.2s; }
+ .btn-save-game:hover { background: rgba(255,255,255,0.25); }
+ .btn-save-game:disabled { opacity: 0.4; cursor: default; }
+
+ .action-row { display: flex; gap: 10px; margin-bottom: 16px; }
+ .btn-calc { flex: 1; padding: 14px; background: var(--coral); border: none; border-radius: 12px; color: white; font-family: 'Lato', sans-serif; font-size: 0.9rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: all 0.2s; box-shadow: 0 3px 12px rgba(212,96,58,0.35); }
+ .btn-calc:hover { background: var(--coral-light); transform: translateY(-1px); }
+ .btn-calc:active { transform: translateY(0); }
+ .btn-reset { padding: 14px 20px; background: white; border: 1.5px solid var(--sand); border-radius: 12px; color: var(--text-mid); font-family: 'Lato', sans-serif; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; }
+ .btn-reset:hover { border-color: var(--text-mid); color: var(--text-dark); }
+
+ /* History tab */
+ .history-empty { text-align: center; padding: 40px 20px; color: var(--text-light); font-style: italic; font-size: 0.88rem; }
+ .history-empty .empty-icon { font-size: 2.5rem; display: block; margin-bottom: 10px; opacity: 0.4; }
+ .history-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+ .history-header h2 { font-family: 'Playfair Display', serif; font-size: 1rem; color: var(--teal-dark); }
+ .btn-clear-all { font-size: 0.72rem; color: var(--text-light); background: none; border: 1px solid var(--sand-light); border-radius: 8px; padding: 5px 10px; cursor: pointer; font-family: 'Lato', sans-serif; transition: all 0.2s; }
+ .btn-clear-all:hover { color: var(--coral); border-color: var(--coral); }
+ .leaderboard-card { background: var(--warm-white); border-radius: 16px; padding: 16px; margin-bottom: 12px; border: 1px solid var(--sand-light); box-shadow: 0 2px 12px rgba(42,33,24,0.07); }
+ .leaderboard-card h3 { font-family: 'Playfair Display', serif; font-size: 0.9rem; color: var(--teal-dark); margin-bottom: 12px; }
+ .lb-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--sand-light); }
+ .lb-row:last-child { border-bottom: none; }
+ .lb-rank { font-size: 1rem; width: 24px; text-align: center; flex-shrink: 0; }
+ .lb-name { flex: 1; font-size: 0.88rem; }
+ .lb-wins { font-size: 0.75rem; color: var(--text-light); margin-right: 4px; }
+ .lb-avg { font-family: 'Playfair Display', serif; font-size: 1rem; font-weight: 600; color: var(--teal-dark); }
+ .stats-strip { display: flex; gap: 8px; margin-bottom: 12px; }
+ .stat-chip { background: white; border: 1px solid var(--sand-light); border-radius: 10px; padding: 8px 12px; flex: 1; text-align: center; }
+ .stat-chip .stat-val { font-family: 'Playfair Display', serif; font-size: 1.3rem; font-weight: 600; color: var(--teal-dark); display: block; }
+ .stat-chip .stat-lbl { font-size: 0.65rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 1px; }
+ .game-item { background: var(--warm-white); border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; border: 1px solid var(--sand-light); box-shadow: 0 1px 6px rgba(42,33,24,0.05); position: relative; }
+ .game-item-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; }
+ .game-num { font-family: 'Playfair Display', serif; font-size: 0.82rem; color: var(--text-light); font-style: italic; }
+ .game-date { font-size: 0.72rem; color: var(--text-light); }
+ .game-player-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
+ .game-player-medal { font-size: 0.9rem; width: 20px; text-align: center; flex-shrink: 0; }
+ .game-player-name { flex: 1; font-size: 0.85rem; }
+ .game-player-name.winner { font-weight: 700; }
+ .game-player-score { font-family: 'Playfair Display', serif; font-size: 1rem; font-weight: 600; color: var(--teal-dark); }
+ .game-player-score.winner { color: var(--coral); }
+ .btn-delete-game { position: absolute; top: 10px; right: 10px; background: none; border: none; font-size: 0.85rem; color: var(--sand); cursor: pointer; padding: 4px; transition: color 0.2s; }
+ .btn-delete-game:hover { color: var(--coral); }
+
+ .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--teal-dark); color: white; padding: 10px 20px; border-radius: 20px; font-size: 0.82rem; font-weight: 600; box-shadow: 0 4px 16px rgba(0,0,0,0.2); z-index: 1000; transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1); white-space: nowrap; }
+ .toast.show { transform: translateX(-50%) translateY(0); }
+
+ @media (min-width: 480px) {
+ body { padding: 20px; max-width: 520px; margin: 0 auto; }
+ header h1 { font-size: 2rem; }
+ }
+</style>
+</head>
+<body>
+
+<button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+ <span class="icon-dark"></span>
+ <span class="icon-light"></span>
+</button>
+
+<header>
+ <div class="logo-bird"></div>
+ <h1>Wingspan <span>· Oceania ·</span></h1>
+ <p class="subtitle">Final Scoring · Oceania Expansion</p>
+</header>
+
+<div class="divider"><span></span></div>
+
+<div class="tab-bar">
+ <button class="tab-btn active" onclick="switchTab('scoring')"> Score</button>
+ <button class="tab-btn" onclick="switchTab('history')"> History</button>
+</div>
+
+<!-- SCORING TAB -->
+<div class="tab-content active" id="tab-scoring">
+
+ <div class="card">
+ <h2> Players</h2>
+ <div class="player-count-row">
+ <button class="count-btn" onclick="setPlayers(1)">1</button>
+ <button class="count-btn" onclick="setPlayers(2)">2</button>
+ <button class="count-btn active" onclick="setPlayers(3)">3</button>
+ <button class="count-btn" onclick="setPlayers(4)">4</button>
+ <button class="count-btn" onclick="setPlayers(5)">5</button>
+ </div>
+ </div>
+
+ <div id="scoringSection"></div>
+
+ <!-- Nectar card -->
+ <div class="nectar-card" id="nectarCard">
+ <h2> Nectar Comparison</h2>
+ <p class="nectar-subtitle">Compare per habitat — 1st place: 5 pts · 2nd place: 2 pts</p>
+ <div class="nectar-grid">
+ <div class="nectar-header-row">
+ <div></div>
+ <div class="nectar-col-head"><span class="hab-icon"></span>Forest</div>
+ <div class="nectar-col-head"><span class="hab-icon"></span>Wetland</div>
+ <div class="nectar-col-head"><span class="hab-icon"></span>Grassland</div>
+ <div class="nectar-col-head" style="font-size:0.75rem;color:var(--pink)">Pts</div>
+ </div>
+ <div id="nectarRows"></div>
+ </div>
+ <p class="nectar-note">Ties: all tied players receive the same points</p>
+ </div>
+
+ <div class="action-row">
+ <button class="btn-calc" onclick="calcScores()"> Calculate Scores</button>
+ <button class="btn-reset" onclick="resetScores()">↺ Reset</button>
+ </div>
+
+ <div class="results-section" id="resultsSection">
+ <div class="results-box">
+ <h2> Final Standings</h2>
+ <div id="rankList"></div>
+ <p class="tiebreaker-note">Tiebreaker: most cached food → then most eggs</p>
+ <button class="btn-save-game" id="btnSave" onclick="saveGame()"> Save Game</button>
+ </div>
+ </div>
+
+</div>
+
+<!-- HISTORY TAB -->
+<div class="tab-content" id="tab-history">
+ <div id="historyContent"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const PLAYER_ICONS = ['','','','',''];
+const PLAYER_NAMES = ['Player 1','Player 2','Player 3','Player 4','Player 5'];
+const MEDALS = ['','','','4⃣','5⃣'];
+const HABITATS = [
+ { id: 'forest', label: 'Forest' },
+ { id: 'wetland', label: 'Wetland' },
+ { id: 'grassland',label: 'Grassland' },
+];
+
+const CATEGORIES = [
+ { id:'birds', label:'Bird Cards', icon:'', dot:'dot-bird', desc:'Sum of points on bird cards', group:'main' },
+ { id:'bonus', label:'Bonus Cards', icon:'', dot:'dot-bonus', desc:'Bonus card points', group:'main' },
+ { id:'goals', label:'Round Goals', icon:'', dot:'dot-goal', desc:'Points from 4 round goal cards', group:'main' },
+ { id:'eggs', label:'Eggs', icon:'', dot:'dot-egg', desc:'Eggs in nests (1 pt each)', group:'main' },
+ { id:'food', label:'Cached Food', icon:'', dot:'dot-food', desc:'Food cached on bird cards (1 pt each)', group:'main' },
+ { id:'tucked', label:'Tucked Cards', icon:'', dot:'dot-tucked',desc:'Cards tucked under birds (1 pt each)', group:'main' },
+];
+
+let numPlayers = 3;
+let playerData = []; // { name, cats:{...}, nectar:{forest,wetland,grassland} }
+let lastSortedScores = [];
+
+// ── Storage ──
+function loadHistory() { try { return JSON.parse(localStorage.getItem('wingspan_history')||'[]'); } catch { return []; } }
+function saveHistory(h) { localStorage.setItem('wingspan_history', JSON.stringify(h)); }
+
+// ── Tabs ──
+function switchTab(tab) {
+ document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', ['scoring','history'][i]===tab));
+ document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+ document.getElementById('tab-'+tab).classList.add('active');
+ if (tab==='history') renderHistory();
+}
+
+// ── Init ──
+function initPlayers(n) {
+ playerData = [];
+ for (let i=0;i<n;i++) {
+ const cats = {};
+ CATEGORIES.forEach(c => cats[c.id]=0);
+ playerData.push({ name: PLAYER_NAMES[i], cats, nectar:{forest:0,wetland:0,grassland:0} });
+ }
+}
+
+function setPlayers(n) {
+ numPlayers = n;
+ document.querySelectorAll('.count-btn').forEach((b,i)=>b.classList.toggle('active',i+1===n));
+ document.getElementById('resultsSection').classList.remove('visible');
+ initPlayers(n);
+ renderCards();
+ renderNectarGrid();
+}
+
+// ── Score cards ──
+function renderCards() {
+ const sec = document.getElementById('scoringSection');
+ sec.innerHTML = '';
+ for (let i=0;i<numPlayers;i++) sec.appendChild(buildCard(i));
+}
+
+function buildCard(idx) {
+ const p = playerData[idx];
+ const card = document.createElement('div');
+ card.className = `score-card p${idx}`;
+ card.innerHTML = `
+ <div class="player-header">
+ <div class="player-icon">${PLAYER_ICONS[idx]}</div>
+ <input class="player-name-input" type="text" value="${p.name}" placeholder="Player name"
+ oninput="playerData[${idx}].name=this.value; refreshNectarNames()">
+ <div class="player-total" id="total-${idx}">0</div>
+ </div>
+ <div class="categories" id="cats-${idx}"></div>`;
+ const cats = card.querySelector(`#cats-${idx}`);
+ CATEGORIES.forEach(cat => {
+ const row = document.createElement('div');
+ row.className = 'cat-row';
+ row.innerHTML = `
+ <label class="cat-label">
+ <span class="dot ${cat.dot}"></span>
+ <span>${cat.icon} ${cat.label}<span class="cat-desc">${cat.desc}</span></span>
+ </label>
+ <div class="score-stepper">
+ <button class="step-btn" onclick="step(${idx},'${cat.id}',-1)">−</button>
+ <input class="score-val" type="number" id="s-${idx}-${cat.id}" value="0" min="0"
+ oninput="setVal(${idx},'${cat.id}',this.value)">
+ <button class="step-btn" onclick="step(${idx},'${cat.id}',1)">+</button>
+ </div>`;
+ cats.appendChild(row);
+ });
+ return card;
+}
+
+function step(pidx, cat, delta) {
+ const v = Math.max(0, playerData[pidx].cats[cat]+delta);
+ playerData[pidx].cats[cat]=v;
+ document.getElementById(`s-${pidx}-${cat}`).value=v;
+ updateTotal(pidx);
+}
+function setVal(pidx, cat, val) {
+ playerData[pidx].cats[cat]=Math.max(0,parseInt(val)||0);
+ updateTotal(pidx);
+}
+function updateTotal(pidx) {
+ const base = Object.values(playerData[pidx].cats).reduce((a,b)=>a+b,0);
+ // nectar points are computed at calc time, not shown here
+ document.getElementById(`total-${pidx}`).textContent = base;
+}
+
+// ── Nectar grid ──
+function renderNectarGrid() {
+ const container = document.getElementById('nectarRows');
+ container.innerHTML = '';
+ for (let i=0;i<numPlayers;i++) {
+ const row = document.createElement('div');
+ row.className = 'nectar-player-row';
+ row.id = `nrow-${i}`;
+ let html = `<div class="nectar-player-label" id="nlabel-${i}">${playerData[i].name}</div>`;
+ HABITATS.forEach(h => {
+ html += `<div class="nectar-input-wrap">
+ <input class="nectar-val" type="number" id="n-${i}-${h.id}" value="0" min="0"
+ oninput="setNectar(${i},'${h.id}',this.value)">
+ <div class="nectar-pts-badge" id="nbadge-${i}-${h.id}"></div>
+ </div>`;
+ });
+ html += `<div class="nectar-total-cell" id="ntotal-${i}">—</div>`;
+ row.innerHTML = html;
+ container.appendChild(row);
+ }
+}
+
+function setNectar(pidx, hab, val) {
+ playerData[pidx].nectar[hab] = Math.max(0, parseInt(val)||0);
+}
+
+function refreshNectarNames() {
+ for (let i=0;i<numPlayers;i++) {
+ const el = document.getElementById(`nlabel-${i}`);
+ if (el) el.textContent = playerData[i].name;
+ }
+}
+
+// Compute nectar points per habitat, returns nectarPts[playerIdx]
+function computeNectarPoints() {
+ const pts = Array(numPlayers).fill(0);
+ HABITATS.forEach(h => {
+ const vals = playerData.map(p => p.nectar[h.id]);
+ const sorted = [...vals].sort((a,b)=>b-a);
+ const first = sorted[0], second = sorted[1];
+
+ vals.forEach((v, i) => {
+ // clear badges
+ const badge = document.getElementById(`nbadge-${i}-${h.id}`);
+ const input = document.getElementById(`n-${i}-${h.id}`);
+ if (badge) badge.textContent = '';
+ if (input) input.classList.remove('top');
+
+ if (first === 0) return; // no nectar placed at all
+
+ if (v === first) {
+ pts[i] += 5;
+ if (badge) badge.textContent = '+5';
+ if (input) input.classList.add('top');
+ } else if (numPlayers > 1 && v === second && second > 0 && v < first) {
+ pts[i] += 2;
+ if (badge) badge.textContent = '+2';
+ }
+ });
+ });
+
+ // Update total nectar score per player
+ for (let i=0;i<numPlayers;i++) {
+ const el = document.getElementById(`ntotal-${i}`);
+ if (el) el.textContent = pts[i] > 0 ? pts[i] : '—';
+ }
+ return pts;
+}
+
+// ── Calc ──
+function calcScores() {
+ document.querySelectorAll('.player-name-input').forEach((inp,i)=>{
+ playerData[i].name = inp.value || PLAYER_NAMES[i];
+ });
+ refreshNectarNames();
+
+ const nectarPts = computeNectarPoints();
+
+ const scores = playerData.map((p,i)=>({
+ idx: i, name: p.name,
+ base: Object.values(p.cats).reduce((a,b)=>a+b,0),
+ nectar: nectarPts[i],
+ get total() { return this.base + this.nectar; },
+ food: p.cats.food, eggs: p.cats.eggs,
+ cats: {...p.cats}, nectarRaw: {...p.nectar}
+ }));
+ scores.sort((a,b)=>b.total-a.total||b.food-a.food||b.eggs-a.eggs);
+ lastSortedScores = scores;
+
+ const rankList = document.getElementById('rankList');
+ rankList.innerHTML = '';
+ scores.forEach((s,rank)=>{
+ const row = document.createElement('div');
+ row.className = `result-row${rank===0?' winner':''}`;
+ row.innerHTML = `
+ <div class="result-rank${rank===0?' gold':''}">${MEDALS[rank]}</div>
+ <div class="result-name">${s.name}</div>
+ <div class="result-score">${s.total}</div>`;
+ rankList.appendChild(row);
+ });
+
+ document.getElementById('btnSave').disabled = false;
+ document.getElementById('btnSave').textContent = ' Save Game';
+ document.getElementById('resultsSection').classList.add('visible');
+ document.getElementById('resultsSection').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function resetScores() {
+ initPlayers(numPlayers);
+ renderCards();
+ renderNectarGrid();
+ document.getElementById('resultsSection').classList.remove('visible');
+ lastSortedScores = [];
+}
+
+// ── Save ──
+function saveGame() {
+ if (!lastSortedScores.length) return;
+ const history = loadHistory();
+ history.unshift({
+ id: Date.now(),
+ date: new Date().toLocaleString('en-AU',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}),
+ players: lastSortedScores.map(s=>({ name:s.name, total:s.total, base:s.base, nectar:s.nectar }))
+ });
+ saveHistory(history);
+ const btn = document.getElementById('btnSave');
+ btn.disabled = true; btn.textContent = ' Saved';
+ showToast('Game saved!');
+}
+
+// ── Toast ──
+function showToast(msg) {
+ const t = document.getElementById('toast');
+ t.textContent = msg; t.classList.add('show');
+ setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+// ── History ──
+function renderHistory() {
+ const history = loadHistory();
+ const el = document.getElementById('historyContent');
+ if (!history.length) {
+ el.innerHTML = `<div class="history-empty"><span class="empty-icon"></span>No games saved yet.<br>Calculate scores and hit Save to record a game.</div>`;
+ return;
+ }
+ const stats = {};
+ history.forEach(g => {
+ g.players.forEach((p,rank)=>{
+ if (!stats[p.name]) stats[p.name]={wins:0,totalScore:0,games:0};
+ stats[p.name].games++; stats[p.name].totalScore+=p.total;
+ if (rank===0) stats[p.name].wins++;
+ });
+ });
+ const lb = Object.entries(stats)
+ .map(([name,s])=>({name,wins:s.wins,avg:Math.round(s.totalScore/s.games),games:s.games}))
+ .sort((a,b)=>b.wins-a.wins||b.avg-a.avg);
+ const lbMedals=['','','','4','5','6','7','8'];
+ const allScores = history.flatMap(g=>g.players.map(p=>p.total));
+ const highScore = Math.max(...allScores);
+
+ let html = `
+ <div class="history-header">
+ <h2> Game History</h2>
+ <button class="btn-clear-all" onclick="clearAllHistory()">Clear All</button>
+ </div>
+ <div class="stats-strip">
+ <div class="stat-chip"><span class="stat-val">${history.length}</span><span class="stat-lbl">Games</span></div>
+ <div class="stat-chip"><span class="stat-val">${highScore}</span><span class="stat-lbl">High Score</span></div>
+ <div class="stat-chip"><span class="stat-val">${lb.length}</span><span class="stat-lbl">Players</span></div>
+ </div>`;
+
+ if (lb.length) {
+ html += `<div class="leaderboard-card"><h3> Win Leaderboard</h3>`;
+ lb.forEach((p,i)=>{
+ html+=`<div class="lb-row"><div class="lb-rank">${lbMedals[i]||(i+1)}</div><div class="lb-name">${p.name}</div><div class="lb-wins">${p.wins}W / ${p.games}G</div><div class="lb-avg">avg ${p.avg}</div></div>`;
+ });
+ html += `</div>`;
+ }
+
+ history.forEach((g,gi)=>{
+ html+=`<div class="game-item">
+ <button class="btn-delete-game" onclick="deleteGame(${g.id})"></button>
+ <div class="game-item-header"><div class="game-num">Game #${history.length-gi}</div><div class="game-date">${g.date}</div></div>
+ <div>`;
+ g.players.forEach((p,rank)=>{
+ const nStr = p.nectar > 0 ? ` <span style="font-size:0.7rem;color:var(--pink)">(+${p.nectar})</span>` : '';
+ html+=`<div class="game-player-row">
+ <div class="game-player-medal">${MEDALS[rank]}</div>
+ <div class="game-player-name${rank===0?' winner':''}">${p.name}</div>
+ <div class="game-player-score${rank===0?' winner':''}">${p.total}${nStr}</div>
+ </div>`;
+ });
+ html+=`</div></div>`;
+ });
+
+ el.innerHTML = html;
+}
+
+function deleteGame(id) { saveHistory(loadHistory().filter(g=>g.id!==id)); renderHistory(); showToast('Deleted'); }
+function clearAllHistory() { if(!confirm('Clear all game history? This cannot be undone.'))return; saveHistory([]); renderHistory(); showToast('History cleared'); }
+
+// ── Theme ──
+if (localStorage.getItem('wsTheme') === 'dark') document.documentElement.classList.add('dark');
+function toggleTheme() {
+ const isDark = document.documentElement.classList.toggle('dark');
+ localStorage.setItem('wsTheme', isDark ? 'dark' : 'light');
+}
+
+// Init
+initPlayers(3);
+renderCards();
+renderNectarGrid();
+</script>
+</body>
+</html>
