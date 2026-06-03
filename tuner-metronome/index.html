@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tuner · Metronome</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Libre+Baskerville:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f0ece4;
+    --surface: #faf7f2;
+    --surface2: #e8e0d4;
+    --surface3: #d8ccbc;
+    --border: rgba(0,0,0,0.10);
+    --border-strong: rgba(0,0,0,0.18);
+    --text: #1c1610;
+    --text-mid: #6b5c48;
+    --text-dim: #a8967e;
+    --accent: #2a6a5a;
+    --accent-light: #3a8a74;
+    --accent2: #b8922a;
+    --danger: #a83030;
+    --knob-bg: #2a2318;
+    --knob-mark: #e8c87a;
+    --wood: #8a6a3a;
+  }
+  :root.dark {
+    --bg: #0e0d0b;
+    --surface: #1a1710;
+    --surface2: #252018;
+    --surface3: #302b22;
+    --border: rgba(255,255,255,0.08);
+    --border-strong: rgba(255,255,255,0.16);
+    --text: #f0ece4;
+    --text-mid: #b0a090;
+    --text-dim: #706050;
+    --accent: #4aaa88;
+    --accent-light: #60c8a0;
+    --accent2: #d4a840;
+    --danger: #c85050;
+    --knob-bg: #0e0c08;
+    --knob-mark: #d4a840;
+    --wood: #6a4a28;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh; overflow-x: hidden;
+    transition: background 0.3s, color 0.3s;
+  }
+  :root.dark body, html.dark body { background: #0e0d0b !important; color: #f0ece4 !important; }
+
+  /* Subtle grain */
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 0;
+  }
+
+  .fixed-top { position: fixed; top: 16px; z-index: 100; display: flex; gap: 8px; }
+  .fixed-top.left { left: 16px; }
+  .fixed-top.right { right: 16px; }
+
+  .ctrl-btn {
+    height: 34px; border-radius: 17px;
+    border: 1px solid var(--border-strong); background: var(--surface);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 0.78rem; color: var(--text-mid);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.3);
+    transition: all 0.2s; padding: 0 14px;
+    font-family: 'DM Mono', monospace; letter-spacing: 1px;
+    text-decoration: none;
+  }
+  .ctrl-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .icon-sun { display: none; }
+  .icon-moon { display: block; }
+  :root.dark .icon-sun { display: block; }
+  :root.dark .icon-moon { display: none; }
+
+  .container { position: relative; z-index: 1; max-width: 440px; margin: 0 auto; padding: 0 18px 60px; }
+
+  /* Header */
+  header { padding: 68px 0 20px; text-align: center; }
+  .header-eyebrow {
+    font-family: 'DM Mono', monospace; font-size: 0.6rem;
+    letter-spacing: 4px; text-transform: uppercase;
+    color: var(--text-dim); margin-bottom: 6px;
+  }
+  h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.9rem; font-weight: 700; letter-spacing: -0.5px;
+    color: var(--text); line-height: 1;
+  }
+  h1 em { font-style: italic; color: var(--accent); }
+
+  /* Instrument frame */
+  .instrument {
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 20px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.5);
+    padding: 20px 18px;
+    margin-bottom: 14px;
+    transition: background 0.3s;
+  }
+  :root.dark .instrument { background: #1a1710 !important; }
+  :root.dark .bpm-display { background: #252018 !important; }
+  :root.dark .beat-strip-wrap { background: #252018 !important; }
+  :root.dark .tab-bar { background: #181510 !important; }
+  :root.dark .tempo-preset-btn { background: #252018 !important; border-color: rgba(255,255,255,0.14) !important; color: #b0a090 !important; }
+  :root.dark .a440-row { background: #252018 !important; }
+  :root.dark .note-grid { background: #1a1710 !important; }
+  :root.dark .tuner-display { background: #252018 !important; }
+
+  /* Tab bar — engraved style */
+  .tab-bar {
+    display: flex; gap: 0;
+    background: var(--surface2);
+    border-radius: 12px; padding: 3px;
+    margin-bottom: 18px;
+    border: 1px solid var(--border-strong);
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.08);
+  }
+  .tab-btn {
+    flex: 1; padding: 9px 8px; border: none; border-radius: 10px;
+    background: transparent;
+    font-family: 'Playfair Display', serif; font-style: italic;
+    font-size: 0.9rem; color: var(--text-dim);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .tab-btn.active {
+    background: var(--surface); color: var(--text); font-style: normal; font-weight: 700;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.4);
+  }
+
+  .panel { display: none; }
+  .panel.active { display: block; animation: fadeIn 0.25s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+  /* ══════════════════════
+     METRONOME
+  ══════════════════════ */
+
+  /* BPM display */
+  .bpm-display {
+    background: var(--surface2); border: 1px solid var(--border-strong);
+    border-radius: 14px; padding: 16px 16px 14px;
+    text-align: center; margin-bottom: 14px;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.10);
+    transition: background 0.3s, border-color 0.3s;
+  }
+  .bpm-big {
+    font-family: 'Libre Baskerville', serif;
+    font-size: 4.2rem; font-weight: 700; letter-spacing: -1px;
+    color: var(--text); line-height: 1; transition: color 0.1s;
+  }
+  .bpm-big.flash { color: var(--accent); }
+  .bpm-unit { font-family: 'DM Mono', monospace; font-size: 0.6rem; letter-spacing: 4px; color: var(--text-dim); text-transform: uppercase; margin-top: 2px; }
+  .tempo-name { font-family: 'Playfair Display', serif; font-style: italic; font-size: 0.85rem; color: var(--accent); margin-top: 4px; min-height: 20px; }
+
+  /* Tempo presets */
+  .tempo-presets {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+    margin-bottom: 14px;
+  }
+  .tempo-preset-btn {
+    padding: 8px 4px; border-radius: 9px;
+    border: 1.5px solid var(--border-strong);
+    background: var(--surface2); color: var(--text-dim);
+    font-family: 'DM Mono', monospace; cursor: pointer;
+    transition: all 0.15s; text-align: center;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.2);
+  }
+  .tempo-preset-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .tempo-preset-btn.active { border-color: var(--accent); background: rgba(42,106,90,0.08); color: var(--accent); }
+  :root.dark .tempo-preset-btn.active { background: rgba(74,170,136,0.1); }
+  .tp-name { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.5px; display: block; }
+  .tp-range { display: none; }
+
+  /* BPM slider */
+  .bpm-slider-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .bpm-slider-lbl { font-family: 'DM Mono', monospace; font-size: 0.58rem; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); white-space: nowrap; }
+
+  /* Beat strip — up to 7 pips, each tappable cycling 4 states */
+  .beat-strip-wrap {
+    background: var(--surface2); border: 1px solid var(--border-strong);
+    border-radius: 12px; padding: 12px 14px; margin-bottom: 14px;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.08);
+  }
+  .beat-strip-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .beat-strip-title { font-family: 'DM Mono', monospace; font-size: 0.58rem; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); }
+  .beat-strip { display: flex; gap: 7px; justify-content: center; flex-wrap: wrap; }
+
+  /* 4 states: 0=mute, 1=low, 2=mid, 3=high (accent) */
+  .beat-pip {
+    flex: 1; min-width: 32px; max-width: 48px;
+    height: 34px; border-radius: 7px;
+    border: 2px solid var(--border-strong);
+    background: var(--surface3);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'DM Mono', monospace; font-size: 0.58rem;
+    cursor: pointer; transition: all 0.1s; position: relative;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.15);
+    user-select: none;
+  }
+  /* State colours — colour only, no icon change */
+  .beat-pip[data-state="0"] { background: var(--surface3); border-color: var(--border-strong); color: var(--text-dim); opacity: 0.4; }
+  .beat-pip[data-state="1"] { background: var(--surface2); border-color: var(--text-dim); color: var(--text-mid); opacity: 1; }
+  .beat-pip[data-state="2"] { background: rgba(184,146,42,0.12); border-color: var(--accent2); color: var(--accent2); opacity: 1; }
+  .beat-pip[data-state="3"] { background: rgba(42,106,90,0.12); border-color: var(--accent); color: var(--accent); opacity: 1; }
+  :root.dark .beat-pip[data-state="2"] { background: rgba(212,168,64,0.12); }
+  :root.dark .beat-pip[data-state="3"] { background: rgba(74,170,136,0.12); }
+
+
+
+  /* Lit = currently playing */
+  .beat-pip.lit[data-state="0"] { background: var(--surface2) !important; opacity: 0.7; transform: scaleY(0.95); }
+  .beat-pip.lit[data-state="1"] { background: var(--text-dim) !important; border-color: var(--text-mid) !important; color: white !important; transform: scaleY(1.06); }
+  .beat-pip.lit[data-state="2"] { background: var(--accent2) !important; border-color: var(--accent2) !important; color: white !important; transform: scaleY(1.08); box-shadow: 0 0 14px rgba(184,146,42,0.45); }
+  .beat-pip.lit[data-state="3"] { background: var(--accent) !important; border-color: var(--accent) !important; color: white !important; transform: scaleY(1.1); box-shadow: 0 0 14px rgba(42,106,90,0.5); }
+
+  /* Legend */
+  .pip-legend { display: flex; gap: 10px; justify-content: center; margin-top: 8px; }
+  .pip-legend-item { display: flex; align-items: center; gap: 4px; font-family: 'DM Mono', monospace; font-size: 0.55rem; color: var(--text-dim); }
+  .pip-legend-dot { width: 8px; height: 8px; border-radius: 2px; }
+
+  .knob-section { display: flex; flex-direction: column; align-items: center; margin-bottom: 14px; }
+  .knob-label { font-family: 'DM Mono', monospace; font-size: 0.6rem; letter-spacing: 3px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 10px; }
+
+
+
+  /* Time sig & subdivision */
+  .sig-row { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 10px; }
+  .pill-btn {
+    padding: 5px 10px; border-radius: 20px;
+    border: 1.5px solid var(--border-strong);
+    background: var(--surface2); color: var(--text-dim);
+    font-family: 'DM Mono', monospace; font-size: 0.65rem; font-weight: 700;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .pill-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(42,106,90,0.08); }
+  :root.dark .pill-btn.active { background: rgba(74,170,136,0.1); }
+  .pill-btn.subdiv.active { border-color: var(--accent2); color: var(--accent2); background: rgba(184,146,42,0.08); }
+  :root.dark .pill-btn.subdiv.active { background: rgba(212,168,64,0.1); }
+
+  .row-label { font-family: 'DM Mono', monospace; font-size: 0.58rem; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 6px; }
+
+  /* Controls below knob */
+  .metro-controls { display: grid; grid-template-columns: 1fr auto auto auto auto 1fr; gap: 7px; align-items: center; margin-bottom: 14px; }
+  .metro-controls .tap-btn { min-width: 0; }
+  .tap-btn {
+    padding: 10px 8px; border-radius: 10px;
+    border: 1.5px solid var(--border-strong);
+    background: var(--surface2); color: var(--text-mid);
+    font-family: 'DM Mono', monospace; font-size: 0.65rem; font-weight: 700;
+    letter-spacing: 2px; cursor: pointer; transition: all 0.15s;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.3);
+  }
+  .tap-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .tap-btn:active { transform: scale(0.96); }
+  .nudge-btn {
+    width: 34px; height: 34px; border-radius: 50%;
+    border: 1.5px solid var(--border-strong);
+    background: var(--surface2); color: var(--text-mid);
+    font-family: 'DM Mono', monospace; font-size: 0.72rem; font-weight: 700;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.3);
+  }
+  .nudge-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .nudge-btn.wide { width: auto; padding: 0 10px; border-radius: 10px; font-size: 0.6rem; }
+
+  /* Play button — classic style */
+  .play-btn {
+    width: 100%; padding: 16px;
+    background: var(--accent); color: white; border: none; border-radius: 14px;
+    font-family: 'Playfair Display', serif; font-size: 1rem; font-weight: 700;
+    letter-spacing: 1px; cursor: pointer; transition: all 0.2s;
+    box-shadow: 0 4px 16px rgba(42,106,90,0.3), inset 0 1px 0 rgba(255,255,255,0.15);
+  }
+  .play-btn:hover { background: var(--accent-light); transform: translateY(-1px); }
+  .play-btn:active { transform: translateY(0); }
+  .play-btn.playing { background: var(--danger); box-shadow: 0 4px 16px rgba(168,48,48,0.35); }
+
+  /* Volume knob row */
+  .vol-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .vol-label { font-family: 'DM Mono', monospace; font-size: 0.58rem; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); white-space: nowrap; }
+  input[type=range] {
+    -webkit-appearance: none; width: 100%; height: 3px; border-radius: 2px;
+    background: var(--surface3); outline: none; cursor: pointer;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #3a3028, var(--knob-bg));
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3); cursor: pointer;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  /* ══════════════════════
+     TUNER
+  ══════════════════════ */
+  .tuner-display {
+    background: var(--surface2); border: 1px solid var(--border-strong);
+    border-radius: 14px; padding: 24px 16px 20px;
+    text-align: center; margin-bottom: 14px;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.10);
+  }
+  .tuner-note {
+    font-family: 'Playfair Display', serif;
+    font-size: 5rem; font-weight: 700; letter-spacing: -3px;
+    line-height: 1; color: var(--text-dim); min-height: 80px;
+    display: flex; align-items: center; justify-content: center;
+    transition: color 0.15s;
+  }
+  .tuner-note.in-tune { color: var(--accent); }
+  .tuner-note.off { color: var(--accent2); }
+  .tuner-freq { font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--text-dim); margin-bottom: 18px; min-height: 18px; letter-spacing: 0.5px; }
+
+  /* Needle meter — classic VU style */
+  .needle-meter {
+    position: relative; height: 80px; margin: 0 10px 8px;
+    overflow: hidden;
+  }
+  .needle-arc {
+    position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 200px; height: 100px;
+    border: 2px solid var(--border-strong);
+    border-radius: 100px 100px 0 0;
+    border-bottom: none;
+    background: linear-gradient(to top, var(--surface2), var(--surface));
+  }
+  /* Tick marks on arc */
+  .needle-ticks { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 200px; height: 100px; }
+  .needle-el {
+    position: absolute; bottom: 4px; left: 50%;
+    width: 2px; height: 68px;
+    background: var(--accent);
+    transform-origin: bottom center;
+    border-radius: 1px;
+    transition: transform 0.12s cubic-bezier(0.25,0.46,0.45,0.94);
+    box-shadow: 0 0 6px rgba(42,106,90,0.4);
+    margin-left: -1px;
+  }
+  .needle-el.off { background: var(--accent2); box-shadow: 0 0 6px rgba(184,146,42,0.4); }
+  .needle-pivot {
+    position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--text-mid); z-index: 2;
+    margin-left: -5px;
+  }
+  .needle-labels {
+    display: flex; justify-content: space-between;
+    font-family: 'DM Mono', monospace; font-size: 0.55rem; color: var(--text-dim);
+    margin-top: 4px;
+    padding: 0 4px;
+  }
+  .cents-readout {
+    font-family: 'DM Mono', monospace; font-size: 0.78rem;
+    color: var(--text-mid); text-align: center; min-height: 20px;
+    margin-top: 2px;
+  }
+  .cents-readout.in-tune { color: var(--accent); font-weight: 700; }
+  .cents-readout.off { color: var(--accent2); }
+
+  .a440-row {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--surface2); border: 1px solid var(--border-strong);
+    border-radius: 12px; padding: 12px 14px; margin-bottom: 14px;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .a440-label { font-family: 'DM Mono', monospace; font-size: 0.65rem; color: var(--text-mid); letter-spacing: 1px; }
+  .a440-controls { display: flex; align-items: center; gap: 10px; }
+  .a440-num { font-family: 'Playfair Display', serif; font-size: 1.2rem; font-weight: 700; color: var(--text); min-width: 48px; text-align: center; }
+  .a440-btn {
+    width: 26px; height: 26px; border-radius: 50%;
+    border: 1.5px solid var(--border-strong); background: var(--surface);
+    color: var(--text-mid); cursor: pointer; font-size: 0.85rem;
+    display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+  }
+  .a440-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .note-grid { background: var(--surface); border: 1px solid var(--border-strong); border-radius: 14px; padding: 14px; margin-bottom: 14px; }
+  .note-grid-title { font-family: 'DM Mono', monospace; font-size: 0.58rem; letter-spacing: 3px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 10px; }
+  .note-buttons { display: grid; grid-template-columns: repeat(6,1fr); gap: 5px; }
+  .note-ref-btn {
+    padding: 9px 4px; border-radius: 8px; border: 1.5px solid var(--border-strong);
+    background: var(--surface2); color: var(--text-mid);
+    font-family: 'DM Mono', monospace; font-size: 0.65rem; font-weight: 700;
+    cursor: pointer; text-align: center; transition: all 0.15s;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.3);
+  }
+  .note-ref-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .note-ref-btn.highlighted { border-color: var(--accent); background: rgba(42,106,90,0.1); color: var(--accent); }
+
+  .mic-btn {
+    width: 100%; padding: 16px; border: none; border-radius: 14px;
+    background: var(--accent); color: white;
+    font-family: 'Playfair Display', serif; font-size: 1rem; font-weight: 700;
+    cursor: pointer; transition: all 0.2s; letter-spacing: 0.5px;
+    box-shadow: 0 4px 16px rgba(42,106,90,0.3), inset 0 1px 0 rgba(255,255,255,0.15);
+    margin-bottom: 12px;
+  }
+  .mic-btn:hover { background: var(--accent-light); transform: translateY(-1px); }
+  .mic-btn.listening { background: var(--danger); animation: mic-pulse 1.5s ease-in-out infinite; }
+  @keyframes mic-pulse { 0%,100%{box-shadow:0 4px 16px rgba(168,48,48,0.3)} 50%{box-shadow:0 4px 24px rgba(168,48,48,0.55)} }
+
+  .info-note { font-family: 'DM Mono', monospace; font-size: 0.65rem; color: var(--text-dim); line-height: 1.6; text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="fixed-top left">
+  <a class="ctrl-btn" href="../">← Home</a>
+</div>
+<div class="fixed-top right">
+  <button class="ctrl-btn" onclick="toggleTheme()">
+    <span class="icon-sun">&#9788;</span>
+    <span class="icon-moon">&#9790;</span>
+  </button>
+</div>
+
+<div class="container">
+  <header>
+    <div class="header-eyebrow">Practice Tools</div>
+    <h1>Metro <em>&</em> Tuner</h1>
+  </header>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('metro')">Metronome</button>
+    <button class="tab-btn" onclick="switchTab('tuner')">Tuner</button>
+  </div>
+
+  <!-- ══ METRONOME ══ -->
+  <div class="panel active" id="panel-metro">
+    <div class="instrument">
+
+      <!-- BPM display -->
+      <div class="bpm-display">
+        <div class="bpm-big" id="bpm-num">96</div>
+        <div class="bpm-unit">BPM</div>
+        <div class="tempo-name" id="tempo-name">Andante</div>
+      </div>
+
+      <!-- Tempo presets -->
+      <div class="tempo-presets" id="tempo-presets"></div>
+
+      <!-- BPM slider + nudge -->
+      <div class="bpm-slider-row">
+        <span class="bpm-slider-lbl">20</span>
+        <input type="range" id="bpm-slider" min="20" max="300" value="96" oninput="setBpm(this.value)" style="flex:1">
+        <span class="bpm-slider-lbl">300</span>
+      </div>
+      <div class="metro-controls" style="margin-bottom:14px">
+        <button class="tap-btn" onclick="resetBeats()">Reset</button>
+        <button class="nudge-btn wide" onclick="nudgeBpm(-5)">−5</button>
+        <button class="nudge-btn" onclick="nudgeBpm(-1)">−</button>
+        <button class="nudge-btn" onclick="nudgeBpm(1)">+</button>
+        <button class="nudge-btn wide" onclick="nudgeBpm(5)">+5</button>
+        <button class="tap-btn" onclick="tapTempo()">Tap</button>
+      </div>
+
+      <!-- Beat strip -->
+      <div class="beat-strip-wrap">
+        <div class="beat-strip-header">
+          <span class="beat-strip-title">Beat Pattern</span>
+          <div class="sig-row" id="time-sig-btns" style="margin-bottom:0;gap:4px"></div>
+        </div>
+        <div class="beat-strip" id="beat-strip"></div>
+      </div>
+
+      <!-- Volume -->
+      <div class="vol-row">
+        <span class="vol-label">Vol</span>
+        <input type="range" id="vol-slider" min="0" max="100" value="80" oninput="setVol(this.value)" style="flex:1">
+      </div>
+
+      <button class="play-btn" id="play-btn" onclick="toggleMetro()">Start</button>
+    </div>
+  </div>
+
+  <!-- ══ TUNER ══ -->
+  <div class="panel" id="panel-tuner">
+    <div class="instrument">
+
+      <div class="tuner-display">
+        <div class="tuner-note" id="tuner-note">—</div>
+        <div class="tuner-freq" id="tuner-freq">Waiting for input…</div>
+
+        <!-- Needle meter -->
+        <div class="needle-meter">
+          <div class="needle-arc"></div>
+          <div class="needle-el" id="needle-el"></div>
+          <div class="needle-pivot"></div>
+        </div>
+        <div class="needle-labels"><span>−50¢</span><span>0</span><span>+50¢</span></div>
+        <div class="cents-readout" id="cents-readout"></div>
+      </div>
+
+      <div class="a440-row">
+        <div class="a440-label">Concert A =</div>
+        <div class="a440-controls">
+          <button class="a440-btn" onclick="adjustA4(-1)">−</button>
+          <span class="a440-num" id="a4-num">440</span> Hz
+          <button class="a440-btn" onclick="adjustA4(1)">+</button>
+        </div>
+      </div>
+
+      <div class="note-grid">
+        <div class="note-grid-title">Reference Tones — click to play</div>
+        <div class="note-buttons" id="note-buttons"></div>
+      </div>
+
+      <button class="mic-btn" id="mic-btn" onclick="toggleTuner()">Start Listening</button>
+      <div class="info-note">Best with sustained notes · Bassoon Bb1 – Eb5 detected</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Theme ──
+if (localStorage.getItem('wsTheme') === 'dark') document.documentElement.classList.add('dark');
+function toggleTheme() {
+  const d = document.documentElement.classList.toggle('dark');
+  localStorage.setItem('wsTheme', d ? 'dark' : 'light');
+}
+
+// ── Tabs ──
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',['metro','tuner'][i]===tab));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+tab).classList.add('active');
+}
+
+// ══════════════════════
+// METRONOME
+// ══════════════════════
+let audioCtx = null;
+let metroPlaying = false;
+let nextBeatTime = 0;
+let currentBeat = 0;
+let scheduleTimer = null;
+let bpm = 96;
+let beatsPerBar = 4;
+let subdivision = 1;
+let volume = 0.8;
+let tapTimes = [];
+
+const TEMPO_NAMES = [
+  [20,39,'Larghissimo'],[40,59,'Largo'],[60,65,'Larghetto'],
+  [66,75,'Adagio'],[76,83,'Andante'],[84,107,'Andante'],
+  [108,119,'Moderato'],[120,139,'Allegretto'],[140,167,'Allegro'],
+  [168,177,'Vivace'],[178,199,'Presto'],[200,300,'Prestissimo']
+];
+function getTempoName(b){ return (TEMPO_NAMES.find(([lo,hi])=>b>=lo&&b<=hi)||[0,0,''])[2]; }
+
+const TIME_SIGS = [2,3,4,5,6,7];
+const SUBDIVS = [{l:'Quarter',v:1},{l:'8th',v:2},{l:'Triplet',v:3},{l:'16th',v:4}];
+
+// Tempo presets
+const TEMPO_PRESETS = [
+  {name:'Larghetto', range:'60–65',  bpm:63},
+  {name:'Adagio',    range:'66–75',  bpm:70},
+  {name:'Andante',   range:'76–107', bpm:92},
+  {name:'Moderato',  range:'108–119',bpm:112},
+  {name:'Allegretto',range:'120–139',bpm:128},
+  {name:'Allegro',   range:'140–167',bpm:152},
+  {name:'Vivace',    range:'168–177',bpm:172},
+  {name:'Presto',    range:'178–200',bpm:188},
+];
+
+// beatStates[i] = 0(mute) | 1(low) | 2(mid) | 3(accent)
+let beatStates = [3,1,1,1]; // default 4/4 with accent on 1
+
+// State sound frequencies and gains
+const STATE_FREQ  = [0,    880,  1200, 1760];
+const STATE_GAIN  = [0,    0.38, 0.62, 0.92];
+
+function initMetroUI() {
+  // Tempo presets
+  const presetsEl = document.getElementById('tempo-presets');
+  TEMPO_PRESETS.forEach(tp=>{
+    const b=document.createElement('button');
+    b.className='tempo-preset-btn';
+    b.id='tp-'+tp.name;
+    b.innerHTML=`<span class="tp-name">${tp.name}</span><span class="tp-range">${tp.range}</span>`;
+    b.onclick=()=>{ setBpm(tp.bpm); highlightPreset(tp.bpm); };
+    presetsEl.appendChild(b);
+  });
+
+  // Time sig
+  const tsRow = document.getElementById('time-sig-btns');
+  TIME_SIGS.forEach(n=>{
+    const b=document.createElement('button');
+    b.className='pill-btn'+(n===4?' active':'');
+    b.textContent=n;
+    b.onclick=()=>{
+      beatsPerBar=n;
+      tsRow.querySelectorAll('.pill-btn').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      initBeatStates();
+      renderBeatStrip();
+    };
+    tsRow.appendChild(b);
+  });
+
+  initBeatStates();
+  renderBeatStrip();
+  updateBpmUI();
+}
+
+function initBeatStates() {
+  beatStates = [];
+  for(let i=0;i<beatsPerBar;i++){
+    beatStates.push(1); // all low by default
+  }
+}
+
+
+function renderBeatStrip() {
+  const strip = document.getElementById('beat-strip');
+  strip.innerHTML = '';
+  for(let i=0;i<beatsPerBar;i++){
+    const pip = document.createElement('div');
+    pip.className = 'beat-pip';
+    pip.id = 'pip-'+i;
+    pip.dataset.state = beatStates[i];
+    pip.innerHTML = '';
+    pip.onclick = () => cyclePipState(i);
+    strip.appendChild(pip);
+  }
+}
+
+function cyclePipState(i) {
+  beatStates[i] = (beatStates[i] + 1) % 4;
+  const pip = document.getElementById('pip-'+i);
+  if(pip) pip.dataset.state = beatStates[i];
+}
+
+function resetBeats() {
+  beatsPerBar = 4;
+  subdivision = 1;
+  // Reset time sig buttons
+  document.querySelectorAll('#time-sig-btns .pill-btn').forEach((b,i)=>{
+    b.classList.toggle('active', TIME_SIGS[i]===4);
+  });
+  initBeatStates();
+  renderBeatStrip();
+  setBpm(96);
+}
+
+function lightBeat(beat) {
+  document.querySelectorAll('.beat-pip').forEach(d=>d.classList.remove('lit'));
+  const p = document.getElementById('pip-'+beat);
+  if(p) p.classList.add('lit');
+  const num = document.getElementById('bpm-num');
+  num.classList.add('flash');
+  setTimeout(()=>num.classList.remove('flash'), 80);
+}
+
+function highlightPreset(bpmVal) {
+  document.querySelectorAll('.tempo-preset-btn').forEach(b=>b.classList.remove('active'));
+  // Find the preset whose range contains the current BPM
+  const RANGES = [
+    {name:'Larghetto', lo:60,  hi:65 },
+    {name:'Adagio',    lo:66,  hi:75 },
+    {name:'Andante',   lo:76,  hi:107},
+    {name:'Moderato',  lo:108, hi:119},
+    {name:'Allegretto',lo:120, hi:139},
+    {name:'Allegro',   lo:140, hi:167},
+    {name:'Vivace',    lo:168, hi:177},
+    {name:'Presto',    lo:178, hi:200},
+  ];
+  const match = RANGES.find(r => bpmVal >= r.lo && bpmVal <= r.hi);
+  if(match) document.getElementById('tp-'+match.name)?.classList.add('active');
+}
+
+function initAudio(){
+  if(!audioCtx){
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if(audioCtx.state === 'suspended') audioCtx.resume();
+  // iOS silent mode fix: play a silent buffer to unlock audio output
+  if(!audioCtx._unlocked){
+    const buf = audioCtx.createBuffer(1, 1, 22050);
+    const src = audioCtx.createBufferSource();
+    src.buffer = buf;
+    src.connect(audioCtx.destination);
+    src.start(0);
+    audioCtx._unlocked = true;
+  }
+}
+
+function scheduleClick(time, beat, isSubdiv) {
+  const beatIdx = beat % beatsPerBar;
+  const state = isSubdiv ? 1 : beatStates[beatIdx];
+  if(state === 0 && !isSubdiv) {
+    // muted beat — still light the pip, just no sound
+    const d=(time-audioCtx.currentTime)*1000;
+    setTimeout(()=>lightBeat(beatIdx),d);
+    return;
+  }
+  if(state === 0 && isSubdiv) return; // muted subdiv
+
+  const g=audioCtx.createGain(), o=audioCtx.createOscillator();
+  let freq, gain, dur;
+  if(isSubdiv) { freq=900; gain=volume*0.12; dur=0.022; }
+  else { freq=STATE_FREQ[state]; gain=volume*STATE_GAIN[state]; dur=0.04; }
+
+  o.frequency.value=freq; o.type='square';
+  g.gain.setValueAtTime(gain, time);
+  g.gain.exponentialRampToValueAtTime(0.001, time+dur);
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start(time); o.stop(time+dur);
+  if(!isSubdiv){ const d=(time-audioCtx.currentTime)*1000; setTimeout(()=>lightBeat(beatIdx),d); }
+}
+
+function scheduler(){
+  while(nextBeatTime < audioCtx.currentTime+0.1){
+    const dur=(60/bpm)/subdivision;
+    const isMain=currentBeat%subdivision===0;
+    scheduleClick(nextBeatTime,Math.floor(currentBeat/subdivision),!isMain);
+    nextBeatTime+=dur; currentBeat++;
+    if(currentBeat>=beatsPerBar*subdivision) currentBeat=0;
+  }
+  scheduleTimer=setTimeout(scheduler,25);
+}
+
+function toggleMetro(){
+  initAudio();
+  metroPlaying=!metroPlaying;
+  const btn=document.getElementById('play-btn');
+  if(metroPlaying){
+    currentBeat=0; nextBeatTime=audioCtx.currentTime+0.05;
+    scheduler(); btn.textContent='Stop'; btn.classList.add('playing');
+  } else {
+    clearTimeout(scheduleTimer);
+    document.querySelectorAll('.beat-pip').forEach(d=>d.classList.remove('lit'));
+    btn.textContent='Start'; btn.classList.remove('playing');
+  }
+}
+
+function setBpm(v){
+  bpm=Math.max(20,Math.min(300,Math.round(v)));
+  document.getElementById('bpm-slider').value=bpm;
+  updateBpmUI();
+  highlightPreset(bpm);
+}
+function nudgeBpm(d){ setBpm(bpm+d); }
+function updateBpmUI(){
+  document.getElementById('bpm-num').textContent=bpm;
+  document.getElementById('tempo-name').textContent=getTempoName(bpm);
+}
+function setVol(v){ volume=v/100; }
+
+let tapTimer=null;
+function tapTempo(){
+  initAudio();
+  const now=performance.now();
+  tapTimes.push(now);
+  if(tapTimes.length>8) tapTimes.shift();
+  clearTimeout(tapTimer);
+  tapTimer=setTimeout(()=>tapTimes=[],3000);
+  if(tapTimes.length>=2){
+    const intervals=[];
+    for(let i=1;i<tapTimes.length;i++) intervals.push(tapTimes[i]-tapTimes[i-1]);
+    const avg=intervals.reduce((a,b)=>a+b,0)/intervals.length;
+    setBpm(Math.round(60000/avg));
+  }
+}
+
+// ══════════════════════
+// TUNER
+// ══════════════════════
+const NOTES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+let a4=440, tunerRunning=false, micStream=null, tunerCtx=null, analyser=null, animFrame=null;
+
+function noteFromFreq(freq){
+  const semi=12*Math.log2(freq/a4)+69;
+  const midi=Math.round(semi);
+  const note=NOTES[((midi%12)+12)%12];
+  const octave=Math.floor(midi/12)-1;
+  const cents=Math.round((semi-midi)*100);
+  const target=a4*Math.pow(2,(midi-69)/12);
+  return {note,octave,cents,target};
+}
+
+function autoCorrelate(buf,sr){
+  let SIZE=buf.length, rms=0;
+  for(let i=0;i<SIZE;i++) rms+=buf[i]*buf[i];
+  rms=Math.sqrt(rms/SIZE);
+  if(rms<0.015) return -1;
+  let r1=0,r2=SIZE-1;
+  for(let i=0;i<SIZE/2;i++) if(Math.abs(buf[i])<0.2){r1=i;break;}
+  for(let i=1;i<SIZE/2;i++) if(Math.abs(buf[SIZE-i])<0.2){r2=SIZE-i;break;}
+  buf=buf.slice(r1,r2); SIZE=buf.length;
+  const c=new Float32Array(SIZE).fill(0);
+  for(let i=0;i<SIZE;i++) for(let j=0;j<SIZE-i;j++) c[i]+=buf[j]*buf[j+i];
+  let d=0; while(c[d]>c[d+1]) d++;
+  let maxval=-1,maxpos=-1;
+  for(let i=d;i<SIZE;i++) if(c[i]>maxval){maxval=c[i];maxpos=i;}
+  let T0=maxpos;
+  const x1=c[T0-1],x2=c[T0],x3=c[T0+1];
+  const aa=(x1+x3-2*x2)/2,bb=(x3-x1)/2;
+  if(aa) T0=T0-bb/(2*aa);
+  return sr/T0;
+}
+
+function renderTuner(freq){
+  const noteEl=document.getElementById('tuner-note');
+  const freqEl=document.getElementById('tuner-freq');
+  const needleEl=document.getElementById('needle-el');
+  const centsEl=document.getElementById('cents-readout');
+  if(freq<=0){
+    noteEl.textContent='—'; noteEl.className='tuner-note';
+    freqEl.textContent='Waiting for input…';
+    needleEl.style.transform='rotate(0deg)'; needleEl.className='needle-el';
+    centsEl.textContent=''; centsEl.className='cents-readout';
+    highlightNote(null); return;
+  }
+  const {note,octave,cents,target}=noteFromFreq(freq);
+  const inTune=Math.abs(cents)<=5;
+  noteEl.textContent=note+octave;
+  noteEl.className='tuner-note '+(inTune?'in-tune':'off');
+  freqEl.textContent=freq.toFixed(1)+' Hz  ·  target '+target.toFixed(1)+' Hz';
+
+  // Needle: 50 cents = 90 degrees
+  const angle=Math.max(-90,Math.min(90, cents/50*90));
+  needleEl.style.transform=`rotate(${angle}deg)`;
+  needleEl.className='needle-el '+(inTune?'':'off');
+
+  if(inTune){ centsEl.textContent='✓ In tune'; centsEl.className='cents-readout in-tune'; }
+  else { centsEl.textContent=(cents>0?'+':'')+cents+'¢  '+(cents>0?'↑ Sharp':'↓ Flat'); centsEl.className='cents-readout off'; }
+  highlightNote(note);
+}
+
+async function toggleTuner(){
+  const btn=document.getElementById('mic-btn');
+  if(tunerRunning){
+    tunerRunning=false; cancelAnimationFrame(animFrame);
+    if(micStream){micStream.getTracks().forEach(t=>t.stop());micStream=null;}
+    if(tunerCtx){tunerCtx.close();tunerCtx=null;}
+    btn.textContent='Start Listening'; btn.classList.remove('listening');
+    renderTuner(-1); return;
+  }
+  try{
+    micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+    tunerCtx=new AudioContext(); analyser=tunerCtx.createAnalyser();
+    analyser.fftSize=4096;
+    tunerCtx.createMediaStreamSource(micStream).connect(analyser);
+    tunerRunning=true; btn.textContent='Stop Listening'; btn.classList.add('listening');
+    const buf=new Float32Array(analyser.fftSize);
+    function tick(){
+      if(!tunerRunning) return;
+      analyser.getFloatTimeDomainData(buf);
+      renderTuner(autoCorrelate(buf,tunerCtx.sampleRate));
+      animFrame=requestAnimationFrame(tick);
+    }
+    tick();
+  } catch(e){ alert('Microphone access denied.'); }
+}
+
+function adjustA4(d){ a4=Math.max(420,Math.min(460,a4+d)); document.getElementById('a4-num').textContent=a4; }
+
+function renderNoteButtons(){
+  const c=document.getElementById('note-buttons');
+  NOTES.forEach(n=>{
+    const b=document.createElement('button');
+    b.className='note-ref-btn'; b.id='note-btn-'+n.replace('#','s'); b.textContent=n;
+    b.onclick=()=>playRefTone(n); c.appendChild(b);
+  });
+}
+function highlightNote(note){
+  document.querySelectorAll('.note-ref-btn').forEach(b=>b.classList.remove('highlighted'));
+  if(note){ const b=document.getElementById('note-btn-'+note.replace('#','s')); if(b) b.classList.add('highlighted'); }
+}
+function playRefTone(note){
+  initAudio();
+  const midi=NOTES.indexOf(note)+60;
+  const freq=a4*Math.pow(2,(midi-69)/12);
+  const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+  o.frequency.value=freq; o.type='sine';
+  g.gain.setValueAtTime(0.35,audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+1.8);
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start(); o.stop(audioCtx.currentTime+1.8);
+}
+
+initMetroUI();
+renderNoteButtons();
+</script>
+</body>
+</html>
